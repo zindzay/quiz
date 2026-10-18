@@ -1,16 +1,23 @@
 # quiz-import
 
-Общие инструменты скилов импорта карточек (`/quiz-from-web-page`, `/quiz-from-pdf`).
+Общие инструменты скилов импорта карточек:
+
+```
+/quiz-from-web-page <url> [n]
+/quiz-from-pdf <путь> [страницы] [n]     # страницы — N или N-M; без диапазона — не больше 100 страниц
+```
 
 | Файл | Назначение |
 |---|---|
 | `card-rules.md` | правила генерации карточек — скилы читают его перед генерацией |
 | `fetch_page.py` | полный основной текст веб-страницы по частям и квоты карточек по разделам |
+| `split_pdf.swift` | проверка PDF, лимит 100 страниц и нарезка на части по 10 страниц с квотами карточек |
 | `post_cards.py` | проверка API и отправка карточек |
 | `test_fetch_page.py`, `fixtures/` | тесты `fetch_page.py` на HTML-фикстурах и локальном сервере |
+| `test_split_pdf.py` | тесты `split_pdf.swift` на PDF-фикстурах |
 | `test_post_cards.py` | тесты `post_cards.py` на поддельном API |
 
-Скрипты — python3, только стандартная библиотека.
+Python-скрипты — только стандартная библиотека; `split_pdf.swift` — PDFKit macOS (`swift` входит в Command Line Tools, как и `python3`).
 
 ## fetch_page.py — текст страницы
 
@@ -59,6 +66,36 @@ python3 tools/quiz-import/fetch_page.py https://ru.wikipedia.org/wiki/HTTP --cou
 - `3` — основного текста меньше 500 символов (страница собирается JavaScript) — скил переходит на запасной путь через WebFetch;
 - `4` — HTTP-ошибка, недоступный хост или ответ не HTML; сообщение в stderr.
 
+## split_pdf.swift — части PDF
+
+```bash
+swift tools/quiz-import/split_pdf.swift tools/quiz-import/fixtures/sections.pdf --count 10 --out /tmp/pdf-sections
+swift tools/quiz-import/split_pdf.swift tools/quiz-import/fixtures/sections.pdf --pages 3-5 --count 6 --out /tmp/pdf-3-5
+```
+
+Read в Claude Code без параметра `pages` читает PDF до 10 страниц, а `pages` требует poppler, поэтому скил читает документ готовыми частями. Скрипт:
+- проверяет, что файл существует и открывается как PDF, и что он не защищён паролем;
+- без `--pages` отказывается от документа больше 100 страниц;
+- режет выбранный диапазон на `part-01.pdf`, `part-02.pdf`, … по 10 страниц;
+- распределяет `--count` карточек по частям (пропорционально числу страниц, сумма равна N; если частей больше N — N равномерно разнесённых частей по 1).
+
+`meta.json`:
+
+```json
+{
+  "file": "tools/quiz-import/fixtures/sections.pdf",
+  "pages": 40,
+  "range": {"from": 1, "to": 40},
+  "count": 10,
+  "parts": [
+    {"file": "part-01.pdf", "from": 1, "to": 10, "quota": 3},
+    {"file": "part-02.pdf", "from": 11, "to": 20, "quota": 3}
+  ]
+}
+```
+
+Коды выхода: `0` — готово; `1` — неверные аргументы, файл не найден или диапазон вне документа; `3` — не PDF или повреждён; `4` — защищён паролем; `5` — больше 100 страниц без `--pages`. Первый запуск компилирует скрипт несколько секунд.
+
 ## post_cards.py — отправка карточек
 
 ### Формат входного JSON
@@ -101,4 +138,21 @@ QUIZ_API_URL=http://localhost:9090 python3 tools/quiz-import/post_cards.py post 
 
 ```bash
 python3 -m unittest discover tools/quiz-import
+```
+
+## Тестовые PDF
+
+Фикстуры скила `/quiz-from-pdf` в `fixtures/` (вместе ~170 КБ) генерирует `fixtures/make_pdfs.swift` (macOS, AppKit + PDFKit):
+
+| Файл | Страниц | Содержимое |
+|---|---|---|
+| `short.pdf` | 3 | конспект «Фотосинтез» с колонтитулами и номерами страниц |
+| `sections.pdf` | 40 | курс лекций «Базы данных»: титул, оглавление, 6 разделов по 6 страниц, заключение, литература |
+| `scanned.pdf` | 2 | «Солнечная система» — страницы-изображения без текстового слоя |
+| `blank.pdf` | 3 | пустые страницы и рисунок без текста |
+| `protected.pdf` | 1 | защищён паролем `quiz` |
+
+```bash
+swift tools/quiz-import/fixtures/make_pdfs.swift fixtures                 # пересоздать фикстуры
+swift tools/quiz-import/fixtures/make_pdfs.swift large /tmp/big.pdf 150   # документ больше 100 страниц (не коммитится)
 ```
