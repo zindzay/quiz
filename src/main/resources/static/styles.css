@@ -31,3 +31,28 @@
 .quiz-card.revealed .quiz-answer {
     display: block;
 }
+
+/* Страница теста: квадратная карточка по центру; длинный текст прокручивается внутри. */
+.quiz-count {
+    max-width: 10rem;
+}
+
+.quiz-test-card {
+    width: min(100%, 26rem);
+    aspect-ratio: 1 / 1;
+    margin-inline: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+    text-align: center;
+    overflow-y: auto;
+}
+
+.quiz-test-card .quiz-question {
+    font-size: 1.25rem;
+}
+
+.quiz-card.revealed .quiz-hint {
+    display: none;
+}

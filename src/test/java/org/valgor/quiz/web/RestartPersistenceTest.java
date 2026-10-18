@@ -47,6 +47,32 @@ class RestartPersistenceTest {
         }
     }
 
+    @Test
+    void reviewSurvivesRestart() throws Exception {
+        Path file = dir.resolve("cards.csv");
+        String id;
+        try (ConfigurableApplicationContext first = start(file)) {
+            HttpResponse<String> created = http.send(
+                    HttpRequest.newBuilder(uri(first, "/api/cards"))
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("{\"question\": \"Q?\", \"answer\": \"A\"}"))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+            id = created.body().replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+            HttpResponse<String> marked = http.send(
+                    HttpRequest.newBuilder(uri(first, "/api/cards/" + id + "/review"))
+                            .header("Content-Type", "application/json")
+                            .PUT(HttpRequest.BodyPublishers.ofString("{\"review\": true}"))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(marked.statusCode()).isEqualTo(200);
+        }
+
+        try (ConfigurableApplicationContext second = start(file)) {
+            assertThat(get(second, "/api/cards/" + id)).contains("\"review\":true");
+        }
+    }
+
     private static ConfigurableApplicationContext start(Path file) {
         // Аргументы командной строки, а не properties(): те имеют низший приоритет и перекрываются application.properties
         return new SpringApplicationBuilder(QuizApplication.class)

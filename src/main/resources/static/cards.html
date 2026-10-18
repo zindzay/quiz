@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quiz — все карточки</title>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="border-bottom">
+    <div class="container quiz-main">
+        <nav class="nav nav-pills py-2" aria-label="Разделы">
+            <a class="nav-link" href="/">Тест</a>
+            <a class="nav-link" href="/add.html">Добавить</a>
+            <a class="nav-link active" aria-current="page" href="/cards.html">Все карточки</a>
+        </nav>
+    </div>
+</header>
+<main class="container quiz-main py-4">
+    <h1 class="h2 mb-4">Все карточки</h1>
+
+    <p id="list-status" class="text-body-secondary"></p>
+    <p id="list-empty" class="text-body-secondary" hidden>
+        Карточек пока нет. <a href="/add.html">Добавить карточку</a>
+    </p>
+    <ul id="cards" class="list-unstyled vstack gap-3 mb-0"></ul>
+</main>
+
+<template id="card-template">
+    <li class="card quiz-card" tabindex="0" role="button" aria-expanded="false">
+        <div class="card-body">
+            <p class="quiz-question fw-semibold mb-0"></p>
+            <p class="quiz-answer mb-0"></p>
+        </div>
+    </li>
+</template>
+
+<script src="cards.js"></script>
+</body>
+</html>

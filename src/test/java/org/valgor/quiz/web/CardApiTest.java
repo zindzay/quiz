@@ -7,6 +7,8 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
@@ -68,13 +70,111 @@ class CardApiTest {
     }
 
     @Test
-    void cardJsonHasExactlyIdQuestionAnswer() {
+    void cardJsonHasExactlyIdQuestionAnswerReview() {
         String id = create("{\"question\": \"A?\", \"answer\": \"a\"}");
 
         assertThat(mvc.get().uri("/api/cards/" + id))
                 .hasStatusOk()
                 .bodyJson()
-                .isStrictlyEqualTo("{\"id\": \"" + id + "\", \"question\": \"A?\", \"answer\": \"a\"}");
+                .isStrictlyEqualTo("{\"id\": \"" + id + "\", \"question\": \"A?\", \"answer\": \"a\", \"review\": false}");
+    }
+
+    @Test
+    void setsAndClearsReview() {
+        String id = create("{\"question\": \"A?\", \"answer\": \"a\"}");
+
+        assertThat(putReview(id, "{\"review\": true}"))
+                .hasStatusOk()
+                .bodyJson().extractingPath("$.review").isEqualTo(true);
+        assertThat(mvc.get().uri("/api/cards/" + id)).bodyJson().extractingPath("$.review").isEqualTo(true);
+
+        assertThat(putReview(id, "{\"review\": false}"))
+                .hasStatusOk()
+                .bodyJson().extractingPath("$.review").isEqualTo(false);
+    }
+
+    @Test
+    void setReviewReturns404ForUnknownId() {
+        assertThat(putReview("missing", "{\"review\": true}"))
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .bodyJson().extractingPath("$.error").isNotNull();
+    }
+
+    @Test
+    void setReviewRejectsInvalidBody() {
+        String id = create("{\"question\": \"A?\", \"answer\": \"a\"}");
+
+        for (String body : new String[] {"{}", "{\"review\": \"да\"}", "{\"review\": \"true\"}", "{\"review\": 1}", "{broken"}) {
+            assertThat(putReview(id, body))
+                    .as(body)
+                    .hasStatus(HttpStatus.BAD_REQUEST)
+                    .bodyJson().extractingPath("$.error").isNotNull();
+        }
+        assertThat(mvc.get().uri("/api/cards/" + id)).bodyJson().extractingPath("$.review").isEqualTo(false);
+    }
+
+    @Test
+    void randomReturnsRequestedNumberOfDistinctCards() {
+        for (int i = 0; i < 30; i++) {
+            create("{\"question\": \"Q" + i + "?\", \"answer\": \"a\"}");
+        }
+
+        MvcTestResult result = mvc.get().uri("/api/cards/random?count=10").exchange();
+
+        assertThat(result).hasStatusOk();
+        List<String> ids = JsonPath.read(body(result), "$[*].id");
+        assertThat(ids).hasSize(10).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void randomIncludesReviewCards() {
+        List<String> review = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            String id = create("{\"question\": \"Q" + i + "?\", \"answer\": \"a\"}");
+            if (i % 10 == 0) {
+                putReview(id, "{\"review\": true}");
+                review.add(id);
+            }
+        }
+
+        List<String> ids = JsonPath.read(body(mvc.get().uri("/api/cards/random?count=10").exchange()), "$[*].id");
+
+        assertThat(ids).hasSize(10).containsAll(review);
+    }
+
+    @Test
+    void randomReturnsAllWhenFewerThanRequested() {
+        for (int i = 0; i < 4; i++) {
+            create("{\"question\": \"Q" + i + "?\", \"answer\": \"a\"}");
+        }
+
+        assertThat(mvc.get().uri("/api/cards/random?count=10"))
+                .hasStatusOk()
+                .bodyJson().extractingPath("$").asArray().hasSize(4);
+    }
+
+    @Test
+    void randomOfEmptyStorageIsEmptyArray() {
+        assertThat(mvc.get().uri("/api/cards/random?count=10"))
+                .hasStatusOk()
+                .bodyJson().isStrictlyEqualTo("[]");
+    }
+
+    @Test
+    void randomRejectsInvalidCount() {
+        for (String query : new String[] {"?count=0", "?count=101", "?count=abc", "?count=", ""}) {
+            assertThat(mvc.get().uri("/api/cards/random" + query))
+                    .as(query)
+                    .hasStatus(HttpStatus.BAD_REQUEST)
+                    .bodyJson().extractingPath("$.error").isEqualTo("Количество должно быть целым числом от 1 до 100");
+        }
+    }
+
+    private MvcTestResult putReview(String id, String body) {
+        return mvc.put().uri("/api/cards/" + id + "/review")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
     }
 
     @Test
@@ -152,8 +252,12 @@ class CardApiTest {
     private String create(String json) {
         MvcTestResult result = post(json);
         assertThat(result).hasStatus(HttpStatus.CREATED);
+        return JsonPath.read(body(result), "$.id");
+    }
+
+    private static String body(MvcTestResult result) {
         try {
-            return JsonPath.read(result.getResponse().getContentAsString(StandardCharsets.UTF_8), "$.id");
+            return result.getResponse().getContentAsString(StandardCharsets.UTF_8);
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException(e);
         }

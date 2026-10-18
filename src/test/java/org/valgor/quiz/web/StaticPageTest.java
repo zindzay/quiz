@@ -39,7 +39,28 @@ class StaticPageTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(
                 type -> assertThat(type).startsWith("text/html"));
-        assertThat(response.body()).contains("id=\"card-form\"");
+        assertThat(response.body()).contains("id=\"setup-form\"").contains("quiz.js");
+    }
+
+    @Test
+    void servesAddPage() throws Exception {
+        assertHtmlPage("/add.html", "id=\"card-form\"");
+    }
+
+    @Test
+    void servesCardsPage() throws Exception {
+        assertHtmlPage("/cards.html", "id=\"cards\"");
+    }
+
+    private void assertHtmlPage(String path, String marker) throws Exception {
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(
+                type -> assertThat(type).startsWith("text/html"));
+        assertThat(response.body()).contains(marker);
     }
 
     @Test

@@ -3,41 +3,62 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Quiz — карточки</title>
+    <title>Quiz — тест</title>
     <script src="theme.js"></script>
     <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<header class="border-bottom">
+    <div class="container quiz-main">
+        <nav class="nav nav-pills py-2" aria-label="Разделы">
+            <a class="nav-link active" aria-current="page" href="/">Тест</a>
+            <a class="nav-link" href="/add.html">Добавить</a>
+            <a class="nav-link" href="/cards.html">Все карточки</a>
+        </nav>
+    </div>
+</header>
+
 <main class="container quiz-main py-4">
-    <h1 class="h2 mb-4">Карточки</h1>
+    <h1 class="h2 mb-4">Тест</h1>
 
-    <form id="card-form" class="card card-body vstack gap-3 mb-4" novalidate>
-        <div>
-            <label for="question" class="form-label fw-semibold">Вопрос</label>
-            <textarea id="question" name="question" class="form-control" rows="2" maxlength="2000"></textarea>
-        </div>
-        <div>
-            <label for="answer" class="form-label fw-semibold">Ответ</label>
-            <textarea id="answer" name="answer" class="form-control" rows="2" maxlength="2000"></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary align-self-start">Добавить</button>
-        <div id="form-error" class="alert alert-danger mb-0" role="alert" hidden></div>
-    </form>
+    <section id="setup">
+        <form id="setup-form" class="card card-body vstack gap-3" novalidate>
+            <div>
+                <label for="count" class="form-label fw-semibold">Количество вопросов</label>
+                <input id="count" name="count" type="number" class="form-control quiz-count" min="1" max="100" step="1" value="10">
+            </div>
+            <button type="submit" class="btn btn-primary align-self-start">Начать тест</button>
+            <div id="setup-error" class="alert alert-danger mb-0" role="alert" hidden></div>
+            <p id="setup-empty" class="mb-0" hidden>
+                Карточек пока нет. <a href="/add.html">Добавить карточки</a>
+            </p>
+        </form>
+    </section>
 
-    <p id="list-status" class="text-body-secondary"></p>
-    <ul id="cards" class="list-unstyled vstack gap-3 mb-0"></ul>
-</main>
-
-<template id="card-template">
-    <li class="card quiz-card" tabindex="0" role="button" aria-expanded="false">
-        <div class="card-body">
+    <section id="question" hidden>
+        <p id="progress" class="text-center fw-semibold mb-1" aria-live="polite"></p>
+        <p id="notice" class="text-center text-body-secondary mb-3" hidden></p>
+        <div id="quiz-card" class="card quiz-card quiz-test-card" tabindex="0" role="button" aria-expanded="false">
+            <span id="review-badge" class="badge text-bg-warning align-self-center mb-3" hidden>На повторении</span>
             <p class="quiz-question fw-semibold mb-0"></p>
             <p class="quiz-answer mb-0"></p>
+            <p class="quiz-hint small text-body-secondary mt-3 mb-0">Нажмите на карточку, чтобы увидеть ответ</p>
         </div>
-    </li>
-</template>
+        <div id="answer-actions" class="hstack gap-2 justify-content-center mt-3" hidden>
+            <button type="button" id="known" class="btn btn-success">Знал</button>
+            <button type="button" id="unknown" class="btn btn-outline-danger">Не знал</button>
+        </div>
+        <div id="answer-error" class="alert alert-danger mt-3 mb-0" role="alert" hidden></div>
+    </section>
 
-<script src="app.js"></script>
+    <section id="result" class="text-center" hidden>
+        <h2 class="h4">Тест завершён</h2>
+        <p id="score" class="fs-3 fw-semibold"></p>
+        <button type="button" id="restart" class="btn btn-primary">Новый тест</button>
+    </section>
+</main>
+
+<script src="quiz.js"></script>
 </body>
 </html>

@@ -32,7 +32,9 @@
 
 Пример: `QUIZ_DATA_FILE=/tmp/cards.csv SERVER_PORT=9090 ./gradlew bootRun`.
 
-API: `GET /api/cards`, `GET /api/cards/{id}`, `POST /api/cards` (`{"question", "answer"}`); ошибки — `{"error": "..."}`.
+API: `GET /api/cards`, `GET /api/cards/{id}`, `POST /api/cards` (`{"question", "answer"}`), `PUT /api/cards/{id}/review` (`{"review": true|false}`), `GET /api/cards/random?count=N` (1–100, сначала карточки на повторении); ошибки — `{"error": "..."}`.
+
+Страницы: `/` — тест (`index.html` + `quiz.js`), `/add.html` — добавление (`add.js`), `/cards.html` — все карточки (`cards.js`); навигация продублирована в шапке каждой страницы.
 
 ## Рабочий процесс OpenSpec
 
@@ -71,6 +73,7 @@ openspec/
 | `id`       | string | Уникальный идентификатор (UUID)   |
 | `question` | string | Текст вопроса, не пустой          |
 | `answer`   | string | Текст ответа, не пустой           |
+| `review`   | bool   | На повторении: ответили «Не знал» |
 
 Дополнительные поля (тема/колода, статистика ответов, даты) добавляются только через OpenSpec-изменение с обновлением формата CSV.
 
@@ -101,7 +104,7 @@ openspec/
 ## Хранение в CSV
 
 - Путь к файлу задаётся конфигурацией (по умолчанию `data/cards.csv`); при отсутствии файл создаётся с заголовком.
-- Формат: UTF-8 без BOM, разделитель `,`, первая строка — заголовок (`id,question,answer`), экранирование по RFC 4180 (кавычки, запятые и переводы строк внутри значений).
+- Формат: UTF-8 без BOM, разделитель `,`, первая строка — заголовок (`id,question,answer,review`; прежний `id,question,answer` читается с `review = false` и переводится в новый формат при первой записи), экранирование по RFC 4180 (кавычки, запятые и переводы строк внутри значений).
 - Не парсить CSV через `split(",")` — использовать библиотеку (например, Apache Commons CSV или OpenCSV) либо корректный парсер с тестами на экранирование.
 - Доступ к файлу инкапсулирован за интерфейсом репозитория (`CardRepository`); остальной код не знает, что хранилище — CSV. Это позволит заменить хранилище без изменения бизнес-логики.
 - Запись атомарная: писать во временный файл в той же директории и заменять через `Files.move(..., ATOMIC_MOVE)`, чтобы сбой не повредил данные.
@@ -143,9 +146,9 @@ openspec/
 cd ui-tests && npx playwright show-report playwright-report-e2e   # отчёт последнего прогона
 ```
 
-- Тесты: `ui-tests/e2e/cards-page.spec.ts`, конфиг `ui-tests/playwright.e2e.config.ts`; результаты и трейсы падений — `ui-tests/test-results-e2e/`.
-- Фикстура `app` (`ui-tests/e2e/app-fixture.ts`) поднимает отдельный экземпляр jar на свободном порту с пустым временным файлом данных на каждый тест: `app.createCard()` — подготовка данных через API, `app.listCards()` — проверка хранилища, `app.stop()` — остановка сервера.
-- Элементы искать по ролям, подписям и текстам (`getByRole`, `getByLabel`, `getByText`), не по CSS-классам. Карточки списка имеют роль `button`, поэтому ищутся как `getByRole('list').getByRole('button')`.
+- Тесты: `ui-tests/e2e/` — `quiz-page.spec.ts` (тест и повторение), `add-page.spec.ts`, `cards-list.spec.ts`, `navigation.spec.ts`, `theme.spec.ts`, `external-resources.spec.ts`; конфиг `ui-tests/playwright.e2e.config.ts`; результаты и трейсы падений — `ui-tests/test-results-e2e/`.
+- Фикстура `app` (`ui-tests/e2e/app-fixture.ts`) поднимает отдельный экземпляр jar на свободном порту с пустым временным файлом данных на каждый тест: `app.createCard()` и `app.setReview()` — подготовка данных через API, `app.listCards()` — проверка хранилища, `app.stop()` — остановка сервера.
+- Элементы искать по ролям, подписям и текстам (`getByRole`, `getByLabel`, `getByText`), не по CSS-классам. Карточки списка имеют роль `button`, поэтому ищутся как `getByRole('list').getByRole('button')`. Навигация — не список (`nav` со ссылками), чтобы `getByRole('list')` находил только карточки. Карточка теста — первая видимая кнопка в `main`; после «Начать тест» сначала дождаться «Вопрос 1 из N», иначе первой кнопкой окажется «Начать тест».
 - Каждый новый сценарий UI в спецификации сопровождается e2e-тестом в том же изменении. Шаги «проверить вручную в браузере» в `tasks.md` не используются, если сценарий можно автоматизировать.
 - Новый тест проверять «мутацией»: временно сломать соответствующий код и убедиться, что тест падает.
 
@@ -159,8 +162,8 @@ cd ui-tests && npx playwright show-report playwright-report-e2e   # отчёт �
 cd ui-tests && npx playwright show-report   # HTML-отчёт последнего прогона
 ```
 
-- Тесты: `ui-tests/tests/cards-page.spec.ts`; эталоны: `ui-tests/tests/__screenshots__/` (коммитятся).
-- Ответы `/api/cards` подменяются в каждом тесте (`ui-tests/tests/fixtures.ts`); статику отдаёт собранный jar на порту 18080 (`QUIZ_UI_TEST_PORT`) с временным файлом данных — `data/` не затрагивается.
+- Тесты: `ui-tests/tests/quiz-page.spec.ts`, `add-page.spec.ts`, `cards-list.spec.ts`; эталоны: `ui-tests/tests/__screenshots__/` (коммитятся).
+- Ответы API (`/api/cards`, `/api/cards/random`, `.../review`) подменяются в каждом тесте (`ui-tests/tests/fixtures.ts`); статику отдаёт собранный jar на порту 18080 (`QUIZ_UI_TEST_PORT`) с временным файлом данных — `data/` не затрагивается.
 - Вариант темы/вьюпорта выбирается тегом в названии теста: без тега — светлая тема 1280×800, `@dark` — тёмная, `@mobile` — 390×844.
 - При расхождении: `ui-tests/test-results/<тест>/` содержит `*-expected.png`, `*-actual.png`, `*-diff.png`.
 - Эталоны снимаются на macOS (суффикс `-darwin`); на Linux/CI нужны свои эталоны — пока не настроено.

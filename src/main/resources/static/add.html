@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quiz — добавить карточку</title>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="border-bottom">
+    <div class="container quiz-main">
+        <nav class="nav nav-pills py-2" aria-label="Разделы">
+            <a class="nav-link" href="/">Тест</a>
+            <a class="nav-link active" aria-current="page" href="/add.html">Добавить</a>
+            <a class="nav-link" href="/cards.html">Все карточки</a>
+        </nav>
+    </div>
+</header>
+<main class="container quiz-main py-4">
+    <h1 class="h2 mb-4">Добавить карточку</h1>
+
+    <form id="card-form" class="card card-body vstack gap-3" novalidate>
+        <div>
+            <label for="question" class="form-label fw-semibold">Вопрос</label>
+            <textarea id="question" name="question" class="form-control" rows="2" maxlength="2000"></textarea>
+        </div>
+        <div>
+            <label for="answer" class="form-label fw-semibold">Ответ</label>
+            <textarea id="answer" name="answer" class="form-control" rows="2" maxlength="2000"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary align-self-start">Добавить</button>
+        <div id="form-error" class="alert alert-danger mb-0" role="alert" hidden></div>
+        <div id="form-success" class="alert alert-success mb-0" role="status" hidden>Карточка добавлена</div>
+    </form>
+</main>
+
+<script src="add.js"></script>
+</body>
+</html>

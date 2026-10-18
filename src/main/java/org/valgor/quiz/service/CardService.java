@@ -1,7 +1,12 @@
 package org.valgor.quiz.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 import org.valgor.quiz.model.Card;
@@ -11,11 +16,20 @@ import org.valgor.quiz.repository.CardRepository;
 public class CardService {
 
     static final int MAX_LENGTH = 2000;
+    static final int MAX_RANDOM_COUNT = 100;
 
     private final CardRepository repository;
+    private final Random random;
 
+    @Autowired
     public CardService(CardRepository repository) {
+        this(repository, new Random());
+    }
+
+    /** random — источник случайности; в тестах с фиксированным зерном. */
+    CardService(CardRepository repository, Random random) {
         this.repository = repository;
+        this.random = random;
     }
 
     public List<Card> list() {
@@ -32,6 +46,39 @@ public class CardService {
                 validate("Вопрос", question),
                 validate("Ответ", answer));
         repository.save(card);
+        return card;
+    }
+
+    /**
+     * До count разных карточек в случайном порядке: сначала карточки на повторении,
+     * оставшиеся места — случайные из остальных.
+     */
+    public List<Card> random(int count) {
+        if (count < 1 || count > MAX_RANDOM_COUNT) {
+            throw new ValidationException(randomCountMessage());
+        }
+        List<Card> review = new ArrayList<>();
+        List<Card> rest = new ArrayList<>();
+        for (Card card : repository.findAll()) {
+            (card.review() ? review : rest).add(card);
+        }
+        Collections.shuffle(review, random);
+        Collections.shuffle(rest, random);
+        List<Card> result = new ArrayList<>(review.subList(0, Math.min(count, review.size())));
+        result.addAll(rest.subList(0, Math.min(count - result.size(), rest.size())));
+        // Перемешиваем весь набор, чтобы вопросы на повторении не шли всегда первыми.
+        Collections.shuffle(result, random);
+        return result;
+    }
+
+    public static String randomCountMessage() {
+        return "Количество должно быть целым числом от 1 до " + MAX_RANDOM_COUNT;
+    }
+
+    /** Ставит (true) или снимает (false) карточку с повторения. */
+    public Card setReview(String id, boolean review) {
+        Card card = get(id).withReview(review);
+        repository.update(card);
         return card;
     }
 

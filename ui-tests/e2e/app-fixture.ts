@@ -5,12 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { test as base } from '@playwright/test';
 
-export type Card = { id: string; question: string; answer: string };
+export type Card = { id: string; question: string; answer: string; review: boolean };
 
 export type App = {
   baseURL: string;
   /** Создаёт карточку через настоящий API (подготовка данных теста). */
   createCard(question: string, answer: string): Promise<Card>;
+  /** Ставит или снимает карточку с повторения через PUT /api/cards/{id}/review. */
+  setReview(id: string, review: boolean): Promise<Card>;
   /** Текущее содержимое хранилища через GET /api/cards. */
   listCards(): Promise<Card[]>;
   /** Останавливает приложение (для сценария «сервер недоступен»). Повторный вызов ничего не делает. */
@@ -93,6 +95,17 @@ export const test = base.extend<{ app: App }>({
           });
           if (response.status !== 201) {
             throw new Error(`POST /api/cards вернул ${response.status}: ${await response.text()}`);
+          }
+          return (await response.json()) as Card;
+        },
+        async setReview(id, review) {
+          const response = await fetch(`${baseURL}/api/cards/${id}/review`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review }),
+          });
+          if (response.status !== 200) {
+            throw new Error(`PUT /api/cards/${id}/review вернул ${response.status}: ${await response.text()}`);
           }
           return (await response.json()) as Card;
         },

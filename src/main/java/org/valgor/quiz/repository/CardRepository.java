@@ -14,4 +14,7 @@ public interface CardRepository {
 
     /** Добавляет новую карточку в конец списка. */
     void save(Card card);
+
+    /** Заменяет карточку с тем же id; если такой нет — IllegalArgumentException. */
+    void update(Card card);
 }
