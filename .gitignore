@@ -49,4 +49,6 @@ data/*
 ui-tests/node_modules/
 ui-tests/test-results/
 ui-tests/playwright-report/
+ui-tests/test-results-e2e/
+ui-tests/playwright-report-e2e/
 .gradle/nodejs/

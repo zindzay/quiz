@@ -54,23 +54,23 @@ val bootJarFile = tasks.bootJar.flatMap { it.archiveFile }
 
 /**
  * Запускает Playwright и падает с понятным сообщением. Код выхода npx недоступен,
- * поэтому результат читается из test-results/.last-run.json, который пишет Playwright.
+ * поэтому результат читается из <resultsDir>/.last-run.json, который пишет Playwright.
  */
-fun NpxTask.runPlaywright(vararg playwrightArgs: String) {
+fun NpxTask.runPlaywright(resultsDir: String, vararg playwrightArgs: String) {
     dependsOn(tasks.bootJar, playwrightInstall)
     command = "playwright"
     args = listOf("test", *playwrightArgs)
     environment.put("QUIZ_JAR", bootJarFile.map { it.asFile.absolutePath })
     ignoreExitValue = true
-    val lastRun = uiTestsDir.resolve("test-results/.last-run.json")
+    val lastRun = uiTestsDir.resolve("$resultsDir/.last-run.json")
     doFirst { lastRun.delete() }
     doLast {
         val status = if (lastRun.exists()) Regex("\"status\":\\s*\"(\\w+)\"").find(lastRun.readText())?.groupValues?.get(1) else null
         if (status != "passed") {
             throw GradleException(
                 "UI-тесты не прошли (status=${status ?: "нет результатов: приложение или браузер не запустились"}).\n" +
-                    "Отчёт: cd ui-tests && npx playwright show-report\n" +
-                    "Diff-изображения: ${uiTestsDir.resolve("test-results")}"
+                    "Отчёт: cd ui-tests && npx playwright show-report ${resultsDir.replace("test-results", "playwright-report")}\n" +
+                    "Результаты и изображения: ${uiTestsDir.resolve(resultsDir)}"
             )
         }
     }
@@ -79,7 +79,7 @@ fun NpxTask.runPlaywright(vararg playwrightArgs: String) {
 val screenshotTest by tasks.registering(NpxTask::class) {
     group = "verification"
     description = "Сравнивает скриншоты веб-интерфейса с эталонами (ui-tests/tests/__screenshots__)"
-    runPlaywright()
+    runPlaywright("test-results")
     inputs.file(bootJarFile)
     inputs.dir("src/main/resources/static")
     inputs.dir("ui-tests/tests")
@@ -92,9 +92,21 @@ val screenshotTest by tasks.registering(NpxTask::class) {
 val screenshotUpdate by tasks.registering(NpxTask::class) {
     group = "verification"
     description = "Перезаписывает эталонные скриншоты. Только при намеренном изменении внешнего вида!"
-    runPlaywright("--update-snapshots")
+    runPlaywright("test-results", "--update-snapshots")
+}
+
+val e2eTest by tasks.registering(NpxTask::class) {
+    group = "verification"
+    description = "Поведенческие e2e-тесты сценариев cards-web-ui на настоящем приложении (ui-tests/e2e)"
+    runPlaywright("test-results-e2e", "--config", "playwright.e2e.config.ts")
+    inputs.file(bootJarFile)
+    inputs.dir("ui-tests/e2e")
+    inputs.files("ui-tests/playwright.e2e.config.ts", "ui-tests/package-lock.json")
+    val marker = layout.buildDirectory.file("ui-tests/e2e-test.ok")
+    outputs.file(marker)
+    doLast { marker.get().asFile.writeText("passed\n") }
 }
 
 tasks.check {
-    dependsOn(screenshotTest)
+    dependsOn(screenshotTest, e2eTest)
 }
