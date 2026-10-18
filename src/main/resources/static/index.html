@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quiz — карточки</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+    <h1>Карточки</h1>
+
+    <form id="card-form" novalidate>
+        <label>
+            Вопрос
+            <textarea name="question" rows="2" maxlength="2000"></textarea>
+        </label>
+        <label>
+            Ответ
+            <textarea name="answer" rows="2" maxlength="2000"></textarea>
+        </label>
+        <button type="submit">Добавить</button>
+        <p id="form-error" class="error" role="alert" hidden></p>
+    </form>
+
+    <p id="list-status" class="status"></p>
+    <ul id="cards" class="cards"></ul>
+</main>
+
+<template id="card-template">
+    <li class="card" tabindex="0" role="button" aria-expanded="false">
+        <p class="question"></p>
+        <p class="answer"></p>
+    </li>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>

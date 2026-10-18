@@ -1,0 +1,101 @@
+package org.valgor.quiz.repository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.valgor.quiz.model.Card;
+
+class CsvCardRepositoryTest {
+
+    @TempDir
+    Path dir;
+
+    @Test
+    void createsFileWithHeaderWhenMissing() throws IOException {
+        Path file = dir.resolve("nested/data/cards.csv");
+
+        CsvCardRepository repository = new CsvCardRepository(file);
+
+        assertThat(repository.findAll()).isEmpty();
+        assertThat(Files.readString(file, StandardCharsets.UTF_8)).isEqualTo("id,question,answer\r\n");
+    }
+
+    @Test
+    void failsOnWrongHeaderWithoutTouchingFile() throws IOException {
+        Path file = dir.resolve("cards.csv");
+        String content = "id,text\r\n1,hello\r\n";
+        Files.writeString(file, content, StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> new CsvCardRepository(file))
+                .isInstanceOf(DataFileException.class)
+                .hasMessageContaining(file.toAbsolutePath().toString());
+        assertThat(Files.readString(file, StandardCharsets.UTF_8)).isEqualTo(content);
+    }
+
+    @Test
+    void failsOnBrokenStructureWithoutTouchingFile() throws IOException {
+        Path file = dir.resolve("cards.csv");
+        String content = "id,question,answer\r\n1,\"unterminated,answer\r\n";
+        Files.writeString(file, content, StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> new CsvCardRepository(file))
+                .isInstanceOf(DataFileException.class)
+                .hasMessageContaining(file.toAbsolutePath().toString());
+        assertThat(Files.readString(file, StandardCharsets.UTF_8)).isEqualTo(content);
+    }
+
+    @Test
+    void failsOnRowWithWrongFieldCount() throws IOException {
+        Path file = dir.resolve("cards.csv");
+        Files.writeString(file, "id,question,answer\r\n1,only question\r\n", StandardCharsets.UTF_8);
+
+        assertThatThrownBy(() -> new CsvCardRepository(file)).isInstanceOf(DataFileException.class);
+    }
+
+    @Test
+    void keepsInsertionOrder() {
+        CsvCardRepository repository = new CsvCardRepository(dir.resolve("cards.csv"));
+        Card a = new Card("a", "Q1", "A1");
+        Card b = new Card("b", "Q2", "A2");
+
+        repository.save(a);
+        repository.save(b);
+
+        assertThat(repository.findAll()).containsExactly(a, b);
+        assertThat(repository.findById("b")).contains(b);
+        assertThat(repository.findById("missing")).isEmpty();
+    }
+
+    @Test
+    void persistsAcrossInstancesWithSpecialCharacters() {
+        Path file = dir.resolve("cards.csv");
+        Card tricky = new Card("1", "Что такое \"CSV\", кратко?", "Первая строка,\nвторая строка «ёлка»");
+        Card plain = new Card("2", "2+2?", "4");
+
+        CsvCardRepository first = new CsvCardRepository(file);
+        first.save(tricky);
+        first.save(plain);
+
+        CsvCardRepository reopened = new CsvCardRepository(file);
+        assertThat(reopened.findAll()).containsExactly(tricky, plain);
+    }
+
+    @Test
+    void leavesNoTemporaryFilesAfterSave() throws IOException {
+        Path file = dir.resolve("cards.csv");
+        CsvCardRepository repository = new CsvCardRepository(file);
+
+        repository.save(new Card("1", "Q", "A"));
+
+        try (var files = Files.list(dir)) {
+            assertThat(files).containsExactly(file);
+        }
+    }
+}
