@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Протокол HTTP — Тестовая энциклопедия</title>
+  <style>.hidden { display: none; }</style>
+  <script>window.analytics = "СКРИПТ-ТЕКСТ";</script>
+</head>
+<body>
+<header class="site-header">
+  <a href="/">Логотип ШАПКА-САЙТА</a>
+</header>
+<nav class="main-nav"><a href="/">Главная</a> <a href="/about">НАВИГАЦИЯ-ССЫЛКА</a></nav>
+<div class="cookie-banner">Мы используем COOKIE-ТЕКСТ. <button>Принять</button></div>
+<div class="layout">
+  <div id="sidebar">БОКОВАЯ-ПАНЕЛЬ: популярные статьи</div>
+  <main id="content">
+    <h1>Протокол HTTP</h1>
+    <div role="search"><input type="search" placeholder="ПОИСК-ПОЛЕ"> Найти ПОИСК-ТЕКСТ</div>
+    <p>HTTP — протокол прикладного уровня для передачи гипертекста. Он работает по схеме «запрос — ответ»: клиент отправляет запрос, сервер возвращает ответ с кодом состояния. Протокол создан для обмена документами между браузером и веб-сервером.<sup class="reference">[1]</sup></p>
+    <p>Протокол не хранит состояние между запросами, поэтому для сессий используются cookie и другие механизмы.</p>
+    <div id="toc" class="toc">ОГЛАВЛЕНИЕ: 1 История 2 Методы 3 Коды состояния</div>
+    <p class="navigator-tips">Слово navigator в классе не совпадает со словом nav, поэтому этот абзац остаётся в тексте.</p>
+
+    <h2>История<span class="mw-editsection">[ПРАВИТЬ-ССЫЛКА]</span></h2>
+    <p>Первую версию протокола, HTTP/0.9, разработал Тим Бернерс-Ли в 1991 году в ЦЕРН. Она поддерживала только метод GET и возвращала документ без заголовков. В 1996 году вышла версия HTTP/1.0 с заголовками и кодами состояния, а в 1997 году — HTTP/1.1 с постоянными соединениями.</p>
+    <aside>ВРЕЗКА-ASIDE: интересный факт не по теме</aside>
+    <p>Версия HTTP/2 опубликована в 2015 году и использует двоичный формат кадров. HTTP/3 работает поверх протокола QUIC и стандартизирован в 2022 году.</p>
+
+    <h2>Методы</h2>
+    <p>Метод запроса указывает действие над ресурсом. Основные методы перечислены ниже.</p>
+    <ul>
+      <li><b>GET</b> — получение ресурса.</li>
+      <li><b>POST</b> — передача данных на сервер.
+        <ul>
+          <li>Форма отправляется методом POST.</li>
+        </ul>
+      </li>
+      <li><b>DELETE</b> — удаление ресурса.
+    </ul>
+    <ol>
+      <li>Клиент открывает соединение.
+      <li>Клиент отправляет запрос.
+      <li>Сервер отвечает.
+    </ol>
+    <p>Пример запроса:</p>
+    <pre><code>GET /index.html HTTP/1.1
+Host: example.com
+    Accept: text/html</code></pre>
+    <p>Заголовок <code>Host</code> обязателен в HTTP/1.1.</p>
+
+    <h2>Коды состояния</h2>
+    <p>Код состояния — трёхзначное число в первой строке ответа. Первая цифра задаёт класс ответа: 1xx — информационные, 2xx — успешные, 3xx — перенаправления, 4xx — ошибки клиента, 5xx — ошибки сервера.</p>
+    <table class="wikitable">
+      <caption>Частые коды</caption>
+      <thead><tr><th>Код</th><th>Значение</th></tr></thead>
+      <tbody>
+        <tr><td>200</td><td>OK</td></tr>
+        <tr><td>404</td><td>Not Found</td></tr>
+        <tr><td>500<td>Internal Server Error</tr>
+      </tbody>
+    </table>
+    <blockquote><p>Код 418 «I'm a teapot» появился как первоапрельская шутка.</p></blockquote>
+    <div hidden>СКРЫТЫЙ-HIDDEN текст</div>
+    <span aria-hidden="true">СКРЫТЫЙ-ARIA текст</span>
+
+    <h2>Примечания</h2>
+    <ol class="references">
+      <li><span class="reference-text">RFC 9110. HTTP Semantics. СНОСКА-ТЕКСТ.</span></li>
+    </ol>
+
+    <h2>См. также</h2>
+    <ul><li>HTTPS</li><li>WebSocket</li></ul>
+  </main>
+  <aside class="related">ВРЕЗКА-ВНЕ-MAIN</aside>
+  <div class="promo"><p>ПРОМО-ВНЕ-MAIN: подпишитесь на рассылку</p></div>
+</div>
+<div class="comments">КОММЕНТАРИЙ пользователя</div>
+<footer>ФУТЕР-САЙТА © 2026</footer>
+<div role="contentinfo">КОНТАКТЫ-CONTENTINFO</div>
+</body>
+</html>
