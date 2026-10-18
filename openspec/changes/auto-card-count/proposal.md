@@ -34,7 +34,8 @@
 - `tools/quiz-import/coverage.py` и `tools/quiz-import/test_coverage.py` — новые файлы (python3, только стандартная библиотека).
 - `tools/quiz-import/card-rules.md` — раздел «Полный охват».
 - `tools/quiz-import/fetch_page.py` (из `complete-web-page-import`) — поддержка `--count auto`.
+- `tools/quiz-import/split_pdf.swift` (из `import-quiz-from-pdf`) — поддержка `--count auto`.
 - `.claude/skills/quiz-from-web-page/SKILL.md`, `.claude/skills/quiz-from-pdf/SKILL.md` — разбор аргументов и шаги автоматического режима.
 - `tools/quiz-import/README.md`, `CLAUDE.md`.
-- **Зависимости.** Реализовывать и архивировать после `import-quiz-from-web-page`, `complete-web-page-import` и `import-quiz-from-pdf`. MODIFIED-требования относятся к основным спецификациям `quiz-from-web-page` и `quiz-from-pdf`, которые появляются при архивации этих изменений. Веб-часть опирается на разделы и части из `fetch_page.py`.
+- **Зависимости выполнены.** `import-quiz-from-web-page`, `complete-web-page-import` и `import-quiz-from-pdf` реализованы и заархивированы: основные спецификации `quiz-from-web-page` и `quiz-from-pdf`, к которым относятся MODIFIED-требования, `fetch_page.py`, `split_pdf.swift` и PDF-фикстуры уже есть. Веб-часть опирается на разделы и части из `fetch_page.py`, PDF-часть — на части из `split_pdf.swift`.
 - Импорт без явного количества становится дороже по токенам: сначала выделяются положения, затем по ним генерируются карточки и сверяется покрытие.
