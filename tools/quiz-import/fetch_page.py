@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Полный основной текст веб-страницы для скила /quiz-from-web-page.
 
-    fetch_page.py URL --count N --out DIR
+    fetch_page.py URL --count N|auto --out DIR
 
 Загружает HTML, выделяет основное содержимое в Markdown, делит его на крупные
 разделы и части до ~12 000 символов, распределяет N карточек по разделам и пишет
-в DIR файлы chunk-01.md, chunk-02.md, … и meta.json.
+в DIR файлы chunk-01.md, chunk-02.md, … и meta.json. С --count auto квоты не
+считаются (quota: null): число карточек определяют ключевые положения.
 
 Коды выхода: 0 — готово, 1 — неверные аргументы, 3 — основного текста меньше
 500 символов (нужен запасной путь), 4 — HTTP-ошибка или недоступный хост.
@@ -32,6 +33,7 @@ MAX_TEXT_CHARS = 500_000
 MAX_CHUNK_CHARS = 12_000
 MIN_SECTION_CHARS = 300
 MIN_COUNT, MAX_COUNT = 1, 50
+AUTO = "auto"
 SEPARATOR = "\n\n"
 
 EXIT_OK = 0
@@ -542,9 +544,12 @@ def build(html, url, count):
         meaningful = [i for i, r in enumerate(reasons) if r != SKIP_REFERENCE] or list(range(len(sections)))
         for i in meaningful:
             reasons[i] = None
-    quotas = [0] * len(sections)
-    for i, q in zip(meaningful, assign_quotas([sections[i].chars for i in meaningful], count)):
-        quotas[i] = q
+    if count is None:
+        quotas = [None] * len(sections)  # автоматический режим: число карточек задают ключевые положения
+    else:
+        quotas = [0] * len(sections)
+        for i, q in zip(meaningful, assign_quotas([sections[i].chars for i in meaningful], count)):
+            quotas[i] = q
 
     chunks = make_chunks(sections)
     section_chunks = [[] for _ in sections]
@@ -563,7 +568,7 @@ def build(html, url, count):
     meta = {
         "url": url,
         "title": title,
-        "count": count,
+        "count": AUTO if count is None else count,
         "total_chars": total_chars,
         "processed_chars": processed_chars,
         "truncated": processed_chars < total_chars,
@@ -590,10 +595,12 @@ def write_output(out_dir, meta, chunk_texts):
 # ---------- CLI ----------
 
 def parse_count(value):
+    if value == AUTO:
+        return None
     try:
         count = int(value)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"количество должно быть целым числом, получено «{value}»")
+        raise argparse.ArgumentTypeError(f"количество должно быть целым числом или {AUTO}, получено «{value}»")
     if not MIN_COUNT <= count <= MAX_COUNT:
         raise argparse.ArgumentTypeError(f"количество должно быть от {MIN_COUNT} до {MAX_COUNT}, получено {count}")
     return count
@@ -607,7 +614,7 @@ class ArgumentParser(argparse.ArgumentParser):
 def main(argv=None):
     parser = ArgumentParser(prog="fetch_page.py", description="Полный текст страницы по частям для импорта карточек.")
     parser.add_argument("url")
-    parser.add_argument("--count", required=True, type=parse_count, help=f"количество карточек, {MIN_COUNT}–{MAX_COUNT}")
+    parser.add_argument("--count", required=True, type=parse_count, help=f"количество карточек, {MIN_COUNT}–{MAX_COUNT}, или {AUTO} — без квот")
     parser.add_argument("--out", required=True, help="каталог для chunk-XX.md и meta.json")
     try:
         args = parser.parse_args(argv)

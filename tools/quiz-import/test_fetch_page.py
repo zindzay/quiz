@@ -239,6 +239,13 @@ class FetchTest(ServerTestCase):
         self.assertIn("запасной путь", err)
         self.assertFalse(os.path.exists(os.path.join(self.out, "meta.json")))
 
+    def test_auto_count_cli(self):
+        code, _, err = run([self.server.url + "/article.html", "--count", "auto", "--out", self.out])
+        self.assertEqual(0, code, err)
+        meta = self.read_meta()
+        self.assertEqual("auto", meta["count"])
+        self.assertTrue(all(s["quota"] is None for s in meta["sections"]))
+
     def test_bad_arguments(self):
         for argv in (["ftp://example.com", "--count", "5", "--out", self.out],
                      [self.server.url + "/article.html", "--count", "0", "--out", self.out],
@@ -358,6 +365,18 @@ class QuotaTest(unittest.TestCase):
                     self.assertEqual(count, sum(quotas))
                     if count >= n:
                         self.assertTrue(all(q >= 1 for q in quotas))
+
+    def test_auto_mode_has_no_quotas(self):
+        html = make_article([("Суть", 4), ("Детали", 6), ("Литература", 3), ("Коротко", 0)])
+        meta, chunks = fetch_page.build(html, "http://x", None)
+        self.assertEqual("auto", meta["count"])
+        self.assertTrue(all(s["quota"] is None for s in meta["sections"]))
+        reasons = {s["title"]: s["skipped_reason"] for s in meta["sections"]}
+        self.assertEqual("справочный раздел", reasons["Литература"])
+        self.assertEqual("короткий раздел", reasons["Коротко"])
+        self.assertIsNone(reasons["Детали"])
+        numbered, numbered_chunks = fetch_page.build(html, "http://x", 10)
+        self.assertEqual(numbered_chunks, chunks)
 
     def test_skipped_sections_get_no_quota(self):
         html = make_article([("Суть", 4), ("Литература", 3), ("External links", 1)])

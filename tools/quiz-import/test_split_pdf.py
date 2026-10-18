@@ -92,6 +92,21 @@ class SplitPdfTest(unittest.TestCase):
         self.assertEqual(3, quotas.count(1))
         self.assertEqual(1, quotas[-1], "последняя часть документа тоже представлена")
 
+    def test_auto_count(self):
+        result, meta, _ = self.split(fixture("sections.pdf"), "auto")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("auto", meta["count"])
+        self.assertTrue(all(p["quota"] is None for p in meta["parts"]))
+        _, numbered, _ = self.split(fixture("sections.pdf"), 10)
+        strip = lambda parts: [(p["file"], p["from"], p["to"]) for p in parts]
+        self.assertEqual(strip(numbered["parts"]), strip(meta["parts"]))
+
+    def test_auto_count_keeps_checks(self):
+        result, _, _ = self.split(self.big, "auto")
+        self.assertEqual(5, result.returncode)
+        result, _, _ = self.split(fixture("protected.pdf"), "auto")
+        self.assertEqual(4, result.returncode)
+
     def test_range_outside_document(self):
         result, _, _ = self.split(fixture("short.pdf"), 5, pages="10-20")
         self.assertEqual(1, result.returncode)

@@ -1,7 +1,8 @@
 // Генератор тестовых PDF для скила /quiz-from-pdf (macOS: AppKit + PDFKit, без сторонних зависимостей).
 //
 //   swift tools/quiz-import/fixtures/make_pdfs.swift fixtures [КАТАЛОГ]   — short, sections, scanned, blank, protected
-//   swift tools/quiz-import/fixtures/make_pdfs.swift large ФАЙЛ [СТРАНИЦ] — документ больше 100 страниц (по умолчанию 150)
+//   swift tools/quiz-import/fixtures/make_pdfs.swift large ФАЙЛ [СТРАНИЦ] — документ больше 100 страниц (по умолчанию 150),
+//                                                                       на каждой странице три уникальных синтетических факта
 //
 // Большой документ не коммитится: его генерируют при проверке сценария «Большой документ без диапазона».
 
@@ -229,12 +230,24 @@ func protectedDocument() -> [Page] {
     ])]
 }
 
+/// Большой документ: на каждой странице — три уникальных факта синтетического справочника,
+/// чтобы диапазон из 50+ страниц давал больше 150 ключевых положений (сценарий «Большой набор»).
 func largeDocument(_ count: Int) -> [Page] {
-    let paragraphs = lectureSections.flatMap { title, items in items.map { (title, $0) } }
+    let colors = ["бирюзовый", "янтарный", "сиреневый", "оливковый", "пурпурный", "графитовый", "лимонный"]
     return (0..<count).map { i in
-        let (title, paragraph) = paragraphs[i % paragraphs.count]
-        return Page(header: "Большой учебник · глава \(i / 10 + 1)", title: i % 10 == 0 ? "Глава \(i / 10 + 1). \(title)" : nil,
-                    body: [paragraph], footer: "Страница \(i + 1) из \(count)")
+        let n = i + 1
+        let code = "К-\(100 + n)"
+        let hardness = 1 + (n * 7) % 10
+        let melting = 600 + (n * 37) % 1400
+        let year = 1850 + (n * 13) % 170
+        return Page(header: "Условный справочник кристаллов (синтетические тестовые данные) · глава \(i / 10 + 1)",
+                    title: "Кристалл \(code)",
+                    body: [
+                        "Твёрдость кристалла \(code) по шкале Мооса — \(hardness).",
+                        "Кристалл \(code) плавится при температуре \(melting) °C.",
+                        "Кристалл \(code) впервые описан в \(year) году; его цвет — \(colors[n % colors.count]).",
+                    ],
+                    footer: "Страница \(n) из \(count)")
     }
 }
 
@@ -254,7 +267,7 @@ case "fixtures":
 case "large":
     guard let path = args.dropFirst().first else { fatalError("укажите путь к файлу") }
     let count = args.dropFirst(2).first.flatMap { Int($0) } ?? 150
-    writePDF(largeDocument(count), title: "Большой учебник", to: path)
+    writePDF(largeDocument(count), title: "Условный справочник кристаллов", to: path)
     print("Готово: \(path), страниц: \(count)")
 default:
     print("Использование: swift make_pdfs.swift fixtures [КАТАЛОГ] | large ФАЙЛ [СТРАНИЦ]")

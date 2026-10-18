@@ -1,10 +1,11 @@
 // Нарезка PDF на части по 10 страниц для скила /quiz-from-pdf (macOS, PDFKit, без сторонних зависимостей).
 //
-//   swift tools/quiz-import/split_pdf.swift FILE [--pages N|N-M] --count N --out DIR
+//   swift tools/quiz-import/split_pdf.swift FILE [--pages N|N-M] --count N|auto --out DIR
 //
 // Read в Claude Code без параметра pages читает PDF только до 10 страниц, а pages требует poppler,
 // поэтому выбранный диапазон режется на part-01.pdf, part-02.pdf, … и описывается в DIR/meta.json
-// вместе с квотами карточек (сумма квот равна N).
+// вместе с квотами карточек (сумма квот равна N). С --count auto квоты не считаются (quota: null):
+// число карточек определяют ключевые положения.
 //
 // Коды выхода: 0 — готово, 1 — неверные аргументы или диапазон вне документа, 3 — файл не открывается
 // как PDF, 4 — PDF защищён паролем, 5 — больше 100 страниц без диапазона (нужно указать --pages).
@@ -43,10 +44,16 @@ while !rest.isEmpty {
     }
 }
 guard let file, let countArg, let outDir else {
-    fail(.usage, "Использование: swift split_pdf.swift FILE [--pages N|N-M] --count N --out DIR")
+    fail(.usage, "Использование: swift split_pdf.swift FILE [--pages N|N-M] --count N|auto --out DIR")
 }
-guard let count = Int(countArg), countRange.contains(count) else {
-    fail(.usage, "Ошибка: количество должно быть целым числом от \(countRange.lowerBound) до \(countRange.upperBound), получено «\(countArg)»")
+/// nil — автоматический режим (--count auto).
+let count: Int?
+if countArg == "auto" {
+    count = nil
+} else if let number = Int(countArg), countRange.contains(number) {
+    count = number
+} else {
+    fail(.usage, "Ошибка: количество должно быть целым числом от \(countRange.lowerBound) до \(countRange.upperBound) или auto, получено «\(countArg)»")
 }
 
 // ---------- Документ ----------
@@ -107,7 +114,8 @@ func quotas(weights: [Int], count: Int) -> [Int] {
     return result.map { $0 + 1 }
 }
 
-let partQuotas = quotas(weights: parts.map { $0.to - $0.from + 1 }, count: count)
+let partQuotas: [Int?] = count.map { quotas(weights: parts.map { $0.to - $0.from + 1 }, count: $0) }
+    ?? Array(repeating: nil, count: parts.count)
 
 try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
 var partsMeta: [[String: Any]] = []
@@ -120,14 +128,14 @@ for (index, part) in parts.enumerated() {
     guard piece.write(to: URL(fileURLWithPath: outDir).appendingPathComponent(name)) else {
         fail(.notPDF, "Не удалось записать \(name) в \(outDir)")
     }
-    partsMeta.append(["file": name, "from": part.from, "to": part.to, "quota": partQuotas[index]])
+    partsMeta.append(["file": name, "from": part.from, "to": part.to, "quota": partQuotas[index] ?? NSNull()])
 }
 
 let meta: [String: Any] = [
     "file": file,
     "pages": total,
     "range": ["from": first, "to": last],
-    "count": count,
+    "count": count.map { $0 as Any } ?? "auto",
     "parts": partsMeta,
 ]
 let json = try! JSONSerialization.data(withJSONObject: meta, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
