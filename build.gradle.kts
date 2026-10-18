@@ -23,6 +23,8 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.apache.commons:commons-csv:1.14.1")
+    implementation("org.webjars:bootstrap:5.3.8")
+    implementation("org.webjars:webjars-locator-lite")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")

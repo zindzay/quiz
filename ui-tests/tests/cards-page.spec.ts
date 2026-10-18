@@ -48,6 +48,7 @@ test('ошибка валидации формы', async ({ page }) => {
   await page.getByRole('button', { name: 'Добавить' }).click();
   await expect(page.getByRole('alert')).toHaveText('Поле «Вопрос» не может быть пустым');
   await page.getByLabel('Ответ').blur();
+  await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('form-error.png', { fullPage: true });
 });
 

@@ -8,7 +8,7 @@
 
 - **Бэкенд:** Java 27, Spring Boot 4 (Spring MVC), сборка Gradle (Kotlin DSL), пакет `org.valgor.quiz`.
 - **Хранилище:** локальный CSV-файл вместо СУБД (Apache Commons CSV).
-- **Фронтенд:** статичные HTML + vanilla JS в `src/main/resources/static/`, их раздаёт Spring Boot.
+- **Фронтенд:** статичные HTML + vanilla JS в `src/main/resources/static/` на Bootstrap 5 (WebJar), их раздаёт Spring Boot — см. раздел «Вёрстка».
 - **Процесс разработки:** spec-driven через [OpenSpec](https://github.com/Fission-AI/OpenSpec).
 
 Обоснование стека — в `design.md` изменения `add-card-view-and-create`.
@@ -84,6 +84,15 @@ openspec/
 - Конкурентный доступ внутри процесса синхронизировать (например, `ReadWriteLock`); предполагается один экземпляр приложения на файл.
 - Файлы данных (`data/`) не коммитятся; в репозитории может лежать только пример `data/cards.example.csv`.
 - Приложение держит карточки в памяти и перезаписывает файл целиком: **редактировать CSV вручную только при остановленном приложении**, иначе правки будут потеряны. Повреждённый файл (неверный заголовок, сломанные кавычки) не даёт приложению стартовать и не перезаписывается.
+
+## Вёрстка
+
+- Bootstrap 5 подключается WebJar'ом (`org.webjars:bootstrap` + `webjars-locator-lite` в `build.gradle.kts`) и отдаётся приложением по пути без версии: `/webjars/bootstrap/css/bootstrap.min.css`. При обновлении Bootstrap меняется только версия в `build.gradle.kts`.
+- Подключается только CSS. JS-бандл (`/webjars/bootstrap/js/bootstrap.bundle.min.js`) добавлять, когда появится компонент, которому он нужен (модальные окна, выпадающие меню).
+- CDN и внешние шрифты не использовать: страница должна работать без интернета (требование «Работа без внешних ресурсов», проверяется e2e-тестом `external-resources.spec.ts`).
+- Тема: `static/theme.js` подключается синхронно в `<head>` до стилей и ставит `data-bs-theme` по `prefers-color-scheme`. Цвета в `styles.css` — только из переменных Bootstrap (`--bs-*`), собственная палитра и `@media (prefers-color-scheme)` не нужны.
+- Сначала утилиты и компоненты Bootstrap, свой CSS в `styles.css` — только для того, чего в Bootstrap нет. Собственные классы — с префиксом `quiz-` (`quiz-card`, `quiz-question`), чтобы не пересекаться с классами Bootstrap.
+- Атрибуты доступности (`<label for>`, `role`, `aria-*`, `tabindex`) обязательны: на них опираются e2e-тесты.
 
 ## Архитектура и код
 

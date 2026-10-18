@@ -10,8 +10,8 @@ const submitButton = form.querySelector('button');
 // Текст карточек выводится только через textContent, чтобы HTML в нём не интерпретировался.
 function renderCard(card) {
     const item = template.content.firstElementChild.cloneNode(true);
-    item.querySelector('.question').textContent = card.question;
-    item.querySelector('.answer').textContent = card.answer;
+    item.querySelector('.quiz-question').textContent = card.question;
+    item.querySelector('.quiz-answer').textContent = card.answer;
     item.addEventListener('click', () => toggle(item));
     item.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {

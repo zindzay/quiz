@@ -4,33 +4,37 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Quiz — карточки</title>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main>
-    <h1>Карточки</h1>
+<main class="container quiz-main py-4">
+    <h1 class="h2 mb-4">Карточки</h1>
 
-    <form id="card-form" novalidate>
-        <label>
-            Вопрос
-            <textarea name="question" rows="2" maxlength="2000"></textarea>
-        </label>
-        <label>
-            Ответ
-            <textarea name="answer" rows="2" maxlength="2000"></textarea>
-        </label>
-        <button type="submit">Добавить</button>
-        <p id="form-error" class="error" role="alert" hidden></p>
+    <form id="card-form" class="card card-body vstack gap-3 mb-4" novalidate>
+        <div>
+            <label for="question" class="form-label fw-semibold">Вопрос</label>
+            <textarea id="question" name="question" class="form-control" rows="2" maxlength="2000"></textarea>
+        </div>
+        <div>
+            <label for="answer" class="form-label fw-semibold">Ответ</label>
+            <textarea id="answer" name="answer" class="form-control" rows="2" maxlength="2000"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary align-self-start">Добавить</button>
+        <div id="form-error" class="alert alert-danger mb-0" role="alert" hidden></div>
     </form>
 
-    <p id="list-status" class="status"></p>
-    <ul id="cards" class="cards"></ul>
+    <p id="list-status" class="text-body-secondary"></p>
+    <ul id="cards" class="list-unstyled vstack gap-3 mb-0"></ul>
 </main>
 
 <template id="card-template">
-    <li class="card" tabindex="0" role="button" aria-expanded="false">
-        <p class="question"></p>
-        <p class="answer"></p>
+    <li class="card quiz-card" tabindex="0" role="button" aria-expanded="false">
+        <div class="card-body">
+            <p class="quiz-question fw-semibold mb-0"></p>
+            <p class="quiz-answer mb-0"></p>
+        </div>
     </li>
 </template>
 

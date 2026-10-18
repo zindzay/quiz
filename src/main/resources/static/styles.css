@@ -1,140 +1,33 @@
-/* Цвета задаются токенами; тёмная тема переопределяет их ниже. */
-:root {
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --text: #1d2330;
-    --muted: #667085;
-    --border: #d0d5dd;
-    --accent: #3a5bd9;
-    --error: #c0362c;
-}
+/* Дополнения к Bootstrap 5: только то, чего в нём нет. Цвета — из переменных Bootstrap,
+   поэтому тёмная тема (data-bs-theme) работает без отдельных правил.
+   Собственные классы — с префиксом quiz-, чтобы не пересекаться с классами Bootstrap. */
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #14171f;
-        --surface: #1d2230;
-        --text: #e6e8ee;
-        --muted: #98a2b3;
-        --border: #344054;
-        --accent: #7c95f2;
-        --error: #f97066;
-    }
-}
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-
-main {
+.quiz-main {
     max-width: 720px;
-    margin: 0 auto;
-    padding: 24px 16px 48px;
 }
 
-h1 {
-    margin: 0 0 16px;
-    font-size: 28px;
-}
-
-form {
-    display: grid;
-    gap: 12px;
-    padding: 16px;
-    margin-bottom: 24px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-}
-
-label {
-    display: grid;
-    gap: 4px;
-    font-weight: 600;
-}
-
-textarea {
-    width: 100%;
-    padding: 8px 10px;
-    font: inherit;
-    font-weight: 400;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    resize: vertical;
-}
-
-button {
-    justify-self: start;
-    padding: 8px 20px;
-    font: inherit;
-    font-weight: 600;
-    color: #fff;
-    background: var(--accent);
-    border: 0;
-    border-radius: 8px;
+.quiz-card {
     cursor: pointer;
 }
 
-button:disabled {
-    opacity: 0.6;
-    cursor: wait;
-}
-
-.error {
-    margin: 0;
-    color: var(--error);
-}
-
-.status {
-    color: var(--muted);
-}
-
-.cards {
-    display: grid;
-    gap: 12px;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.card {
-    padding: 14px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    cursor: pointer;
-}
-
-.card:focus-visible {
-    outline: 2px solid var(--accent);
+.quiz-card:focus-visible {
+    outline: 2px solid var(--bs-primary);
     outline-offset: 2px;
 }
 
-.card p {
-    margin: 0;
+.quiz-question,
+.quiz-answer {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-.question {
-    font-weight: 600;
-}
-
-.answer {
+.quiz-answer {
     display: none;
-    margin-top: 8px !important;
-    padding-top: 8px;
-    border-top: 1px dashed var(--border);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--bs-border-color);
 }
 
-.card.revealed .answer {
+.quiz-card.revealed .quiz-answer {
     display: block;
 }
