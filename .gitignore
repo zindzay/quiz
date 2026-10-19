@@ -1,21 +1,22 @@
-.gradle
+### Gradle / сборка ###
+.gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-.kotlin
-
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
-*.iml
-*.ipr
+.kotlin/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+*.class
+hs_err_pid*.log
+replay_pid*.log
+
+### IntelliJ IDEA (проект описан в Gradle, настройки IDE — личные) ###
+.idea/
+*.iws
+*.iml
+*.ipr
 
 ### Eclipse ###
 .apt_generated
@@ -39,19 +40,42 @@ bin/
 ### VS Code ###
 .vscode/
 
-### Mac OS ###
+### Редакторы и ОС ###
 .DS_Store
-### Quiz data ###
+._*
+Thumbs.db
+Desktop.ini
+*~
+*.swp
+*.swo
+
+### Логи и локальные переменные окружения ###
+*.log
+.env
+.env.*
+
+### Claude Code: личные настройки (общие — в .claude/settings.json) ###
+.claude/settings.local.json
+CLAUDE.local.md
+
+### Данные приложения (в репозитории — только пример) ###
 data/*
 !data/cards.example.csv
 
-### UI tests ###
+### UI-тесты (Playwright, Node) ###
 ui-tests/node_modules/
 ui-tests/test-results/
 ui-tests/playwright-report/
 ui-tests/test-results-e2e/
 ui-tests/playwright-report-e2e/
+ui-tests/blob-report/
+ui-tests/playwright/.cache/
 .gradle/nodejs/
+npm-debug.log*
 
-### Python ###
+### Python (скрипты импорта) ###
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
