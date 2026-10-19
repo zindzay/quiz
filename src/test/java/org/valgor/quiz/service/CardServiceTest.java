@@ -21,7 +21,6 @@ class CardServiceTest {
 
     @Test
     void createsCardWithTrimmedTextAndNewId() {
-        org.junit.jupiter.api.Assertions.fail("мутация: проверка CI");
         Card card = service.create("  2+2?  ", "4\n");
 
         assertThat(card.question()).isEqualTo("2+2?");
