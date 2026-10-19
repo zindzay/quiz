@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CARDS, mockCardList, mockDeleteFailure, mockNetworkFailure } from './fixtures';
+import { CARDS, manyCards, mockCardList, mockDeleteFailure, mockNetworkFailure } from './fixtures';
 
 // Страница всех карточек (/cards.html).
 async function openWithCards(page: Page) {
@@ -53,4 +53,26 @@ test('список: ошибка удаления', async ({ page }) => {
   await expect(card.getByRole('alert')).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(page).toHaveScreenshot('list-delete-error.png', { fullPage: true });
+});
+
+// Вторая из трёх страниц: номера 11–20 и панель страниц.
+async function openSecondPage(page: Page) {
+  await mockCardList(page, manyCards(25));
+  await page.goto('/cards.html?page=2');
+  await expect(page.getByRole('navigation', { name: 'Страницы списка' })).toBeVisible();
+}
+
+test('список: страницы', async ({ page }) => {
+  await openSecondPage(page);
+  await expect(page).toHaveScreenshot('list-pages.png', { fullPage: true });
+});
+
+test('список: страницы, тёмная тема @dark', async ({ page }) => {
+  await openSecondPage(page);
+  await expect(page).toHaveScreenshot('list-pages-dark.png', { fullPage: true });
+});
+
+test('список: страницы, мобильный вид @mobile', async ({ page }) => {
+  await openSecondPage(page);
+  await expect(page).toHaveScreenshot('list-pages-mobile.png', { fullPage: true });
 });

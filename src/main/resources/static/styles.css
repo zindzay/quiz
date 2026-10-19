@@ -59,3 +59,14 @@
 .quiz-card.revealed .quiz-hint {
     display: none;
 }
+
+/* Номер карточки в списке: колонка слева, текст карточки может сжиматься и переноситься. */
+.quiz-number {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.quiz-card-text {
+    flex-grow: 1;
+    min-width: 0;
+}

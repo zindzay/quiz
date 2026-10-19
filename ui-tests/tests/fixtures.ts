@@ -28,6 +28,19 @@ export const CARDS: Card[] = [
   },
 ];
 
+/** count коротких карточек «Карточка 01»… с фиксированными id — для страниц списка. */
+export function manyCards(count: number): Card[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = String(i + 1).padStart(2, '0');
+    return {
+      id: `00000000-0000-4000-8000-0000000001${n}`,
+      question: `Карточка ${n}: какой вопрос проверяет эта карточка?`,
+      answer: `Ответ ${n}.`,
+      review: false,
+    };
+  });
+}
+
 /** Вопрос предельной длины для проверки прокрутки внутри квадратной карточки теста. */
 export const LONG_CARD: Card = {
   id: '00000000-0000-4000-8000-000000000004',
