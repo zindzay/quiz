@@ -1,0 +1,55 @@
+# Тесты на каждый пуш в master (в том числе мерж PR) и на пулл-реквесты в master.
+# Скриншотные тесты не запускаются: эталоны есть только для macOS — см. раздел «CI» в CLAUDE.md.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Новый коммит в PR отменяет устаревший прогон; прогоны master доводятся до конца.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 27
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Сборка, JUnit и e2e-тесты
+        run: ./gradlew build -x screenshotTest
+
+      - uses: actions/setup-python@v7
+        if: success() || failure()
+        with:
+          python-version: '3.12'
+
+      - name: Тесты скриптов импорта
+        if: success() || failure()
+        run: python3 -m unittest discover tools/quiz-import
+
+      - name: Отчёты тестов
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            build/reports/tests/test/
+            ui-tests/playwright-report-e2e/
+            ui-tests/test-results-e2e/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -48,7 +48,9 @@ val playwrightInstall by tasks.registering(NpxTask::class) {
     description = "Скачивает Chromium для Playwright"
     dependsOn(tasks.npmInstall)
     command = "playwright"
-    args = listOf("install", "chromium")
+    // В CI (GitHub Actions задаёт CI=true) на чистом Linux нужны ещё системные библиотеки Chromium.
+    val withDeps = if (System.getenv("CI") != null) listOf("--with-deps") else emptyList()
+    args = listOf("install") + withDeps + "chromium"
 }
 
 val uiTestsDir = file("ui-tests")
