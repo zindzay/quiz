@@ -29,10 +29,22 @@
 </main>
 
 <template id="card-template">
-    <li class="card quiz-card" tabindex="0" role="button" aria-expanded="false">
+    <li class="card quiz-card">
         <div class="card-body">
-            <p class="quiz-question fw-semibold mb-0"></p>
-            <p class="quiz-answer mb-0"></p>
+            <div class="quiz-toggle" tabindex="0" role="button" aria-expanded="false">
+                <p class="quiz-question fw-semibold mb-0"></p>
+                <p class="quiz-answer mb-0"></p>
+            </div>
+            <div class="quiz-card-actions d-flex flex-wrap justify-content-end align-items-center gap-2 mt-3">
+                <p class="quiz-delete-error text-danger small mb-0 me-auto" role="alert" hidden></p>
+                <button type="button" class="quiz-delete btn btn-sm btn-outline-danger">Удалить</button>
+                <!-- Без d-flex: утилиты display перекрывают атрибут hidden. -->
+                <span class="quiz-confirm" hidden>
+                    <span class="small me-2">Удалить карточку?</span>
+                    <button type="button" class="quiz-confirm-yes btn btn-sm btn-danger me-2">Да</button>
+                    <button type="button" class="quiz-confirm-cancel btn btn-sm btn-outline-secondary">Отмена</button>
+                </span>
+            </div>
         </div>
     </li>
 </template>

@@ -73,6 +73,29 @@ class RestartPersistenceTest {
         }
     }
 
+    @Test
+    void deletionSurvivesRestart() throws Exception {
+        Path file = dir.resolve("cards.csv");
+        String id;
+        try (ConfigurableApplicationContext first = start(file)) {
+            HttpResponse<String> created = http.send(
+                    HttpRequest.newBuilder(uri(first, "/api/cards"))
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("{\"question\": \"Q?\", \"answer\": \"A\"}"))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+            id = created.body().replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+            HttpResponse<String> deleted = http.send(
+                    HttpRequest.newBuilder(uri(first, "/api/cards/" + id)).DELETE().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(deleted.statusCode()).isEqualTo(204);
+        }
+
+        try (ConfigurableApplicationContext second = start(file)) {
+            assertThat(get(second, "/api/cards")).isEqualTo("[]");
+        }
+    }
+
     private static ConfigurableApplicationContext start(Path file) {
         // Аргументы командной строки, а не properties(): те имеют низший приоритет и перекрываются application.properties
         return new SpringApplicationBuilder(QuizApplication.class)

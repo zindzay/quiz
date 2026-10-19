@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CARDS, mockCardList, mockNetworkFailure } from './fixtures';
+import { CARDS, mockCardList, mockDeleteFailure, mockNetworkFailure } from './fixtures';
 
 // Страница всех карточек (/cards.html).
 async function openWithCards(page: Page) {
@@ -33,4 +33,24 @@ test('список: ошибка загрузки', async ({ page }) => {
   await page.goto('/cards.html');
   await expect(page.getByText('Не удалось загрузить карточки')).toBeVisible();
   await expect(page).toHaveScreenshot('list-error.png', { fullPage: true });
+});
+
+test('список: подтверждение удаления', async ({ page }) => {
+  await openWithCards(page);
+  const card = page.getByRole('listitem').filter({ hasText: CARDS[0].question });
+  await card.getByRole('button', { name: 'Удалить' }).click();
+  await expect(card.getByText('Удалить карточку?')).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('list-delete-confirm.png', { fullPage: true });
+});
+
+test('список: ошибка удаления', async ({ page }) => {
+  await openWithCards(page);
+  await mockDeleteFailure(page);
+  const card = page.getByRole('listitem').filter({ hasText: CARDS[0].question });
+  await card.getByRole('button', { name: 'Удалить' }).click();
+  await card.getByRole('button', { name: 'Да' }).click();
+  await expect(card.getByRole('alert')).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page).toHaveScreenshot('list-delete-error.png', { fullPage: true });
 });

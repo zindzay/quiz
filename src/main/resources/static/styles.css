@@ -6,11 +6,14 @@
     max-width: 720px;
 }
 
-.quiz-card {
+/* Раскрытие ответа: карточка теста целиком, в списке — область вопроса и ответа (.quiz-toggle). */
+.quiz-test-card,
+.quiz-toggle {
     cursor: pointer;
 }
 
-.quiz-card:focus-visible {
+.quiz-test-card:focus-visible,
+.quiz-toggle:focus-visible {
     outline: 2px solid var(--bs-primary);
     outline-offset: 2px;
 }

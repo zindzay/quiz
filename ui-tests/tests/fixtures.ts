@@ -78,3 +78,10 @@ export async function mockCreateSuccess(page: Page): Promise<void> {
       : route.fallback(),
   );
 }
+
+/** DELETE /api/cards/{id} обрывается сетевой ошибкой. */
+export async function mockDeleteFailure(page: Page): Promise<void> {
+  await page.route('**/api/cards/*', (route) =>
+    route.request().method() === 'DELETE' ? route.abort('connectionrefused') : route.fallback(),
+  );
+}

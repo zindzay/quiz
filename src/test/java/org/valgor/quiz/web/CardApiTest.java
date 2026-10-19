@@ -170,6 +170,38 @@ class CardApiTest {
         }
     }
 
+    @Test
+    void deletesCard() {
+        String a = create("{\"question\": \"A?\", \"answer\": \"a\"}");
+        create("{\"question\": \"B?\", \"answer\": \"b\"}");
+
+        assertThat(mvc.delete().uri("/api/cards/" + a)).hasStatus(HttpStatus.NO_CONTENT);
+
+        assertThat(mvc.get().uri("/api/cards"))
+                .hasStatusOk()
+                .bodyJson().extractingPath("$[*].question").asArray().containsExactly("B?");
+        assertThat(mvc.get().uri("/api/cards/" + a)).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteReturns404ForUnknownId() {
+        assertThat(mvc.delete().uri("/api/cards/missing"))
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .bodyJson().extractingPath("$.error").isNotNull();
+    }
+
+    @Test
+    void deletedReviewCardIsNotInRandom() {
+        String a = create("{\"question\": \"A?\", \"answer\": \"a\"}");
+        create("{\"question\": \"B?\", \"answer\": \"b\"}");
+        putReview(a, "{\"review\": true}");
+
+        mvc.delete().uri("/api/cards/" + a).exchange();
+
+        List<String> ids = JsonPath.read(body(mvc.get().uri("/api/cards/random?count=10").exchange()), "$[*].id");
+        assertThat(ids).hasSize(1).doesNotContain(a);
+    }
+
     private MvcTestResult putReview(String id, String body) {
         return mvc.put().uri("/api/cards/" + id + "/review")
                 .contentType(MediaType.APPLICATION_JSON)

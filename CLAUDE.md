@@ -32,9 +32,9 @@
 
 Пример: `QUIZ_DATA_FILE=/tmp/cards.csv SERVER_PORT=9090 ./gradlew bootRun`.
 
-API: `GET /api/cards`, `GET /api/cards/{id}`, `POST /api/cards` (`{"question", "answer"}`), `PUT /api/cards/{id}/review` (`{"review": true|false}`), `GET /api/cards/random?count=N` (1–100, сначала карточки на повторении); ошибки — `{"error": "..."}`.
+API: `GET /api/cards`, `GET /api/cards/{id}`, `POST /api/cards` (`{"question", "answer"}`), `PUT /api/cards/{id}/review` (`{"review": true|false}`), `DELETE /api/cards/{id}` (204/404), `GET /api/cards/random?count=N` (1–100, сначала карточки на повторении); ошибки — `{"error": "..."}`.
 
-Страницы: `/` — тест (`index.html` + `quiz.js`), `/add.html` — добавление (`add.js`), `/cards.html` — все карточки (`cards.js`); навигация продублирована в шапке каждой страницы.
+Страницы: `/` — тест (`index.html` + `quiz.js`), `/add.html` — добавление (`add.js`), `/cards.html` — все карточки и удаление с подтверждением (`cards.js`); навигация продублирована в шапке каждой страницы.
 
 ## Рабочий процесс OpenSpec
 
@@ -148,7 +148,7 @@ cd ui-tests && npx playwright show-report playwright-report-e2e   # отчёт �
 
 - Тесты: `ui-tests/e2e/` — `quiz-page.spec.ts` (тест и повторение), `add-page.spec.ts`, `cards-list.spec.ts`, `navigation.spec.ts`, `theme.spec.ts`, `external-resources.spec.ts`; конфиг `ui-tests/playwright.e2e.config.ts`; результаты и трейсы падений — `ui-tests/test-results-e2e/`.
 - Фикстура `app` (`ui-tests/e2e/app-fixture.ts`) поднимает отдельный экземпляр jar на свободном порту с пустым временным файлом данных на каждый тест: `app.createCard()` и `app.setReview()` — подготовка данных через API, `app.listCards()` — проверка хранилища, `app.stop()` — остановка сервера.
-- Элементы искать по ролям, подписям и текстам (`getByRole`, `getByLabel`, `getByText`), не по CSS-классам. Карточки списка имеют роль `button`, поэтому ищутся как `getByRole('list').getByRole('button')`. Навигация — не список (`nav` со ссылками), чтобы `getByRole('list')` находил только карточки. Карточка теста — первая видимая кнопка в `main`; после «Начать тест» сначала дождаться «Вопрос 1 из N», иначе первой кнопкой окажется «Начать тест».
+- Элементы искать по ролям, подписям и текстам (`getByRole`, `getByLabel`, `getByText`), не по CSS-классам. Карточки списка — элементы списка `getByRole('list').getByRole('listitem')`; внутри каждой — кнопка раскрытия с текстом вопроса (`getByRole('button', { name: /вопрос/ })`) и кнопки «Удалить», «Да», «Отмена». Навигация — не список (`nav` со ссылками), чтобы `getByRole('list')` находил только карточки. Карточка теста — первая видимая кнопка в `main`; после «Начать тест» сначала дождаться «Вопрос 1 из N», иначе первой кнопкой окажется «Начать тест».
 - Каждый новый сценарий UI в спецификации сопровождается e2e-тестом в том же изменении. Шаги «проверить вручную в браузере» в `tasks.md` не используются, если сценарий можно автоматизировать.
 - Новый тест проверять «мутацией»: временно сломать соответствующий код и убедиться, что тест падает.
 
@@ -163,7 +163,7 @@ cd ui-tests && npx playwright show-report   # HTML-отчёт последнег
 ```
 
 - Тесты: `ui-tests/tests/quiz-page.spec.ts`, `add-page.spec.ts`, `cards-list.spec.ts`; эталоны: `ui-tests/tests/__screenshots__/` (коммитятся).
-- Ответы API (`/api/cards`, `/api/cards/random`, `.../review`) подменяются в каждом тесте (`ui-tests/tests/fixtures.ts`); статику отдаёт собранный jar на порту 18080 (`QUIZ_UI_TEST_PORT`) с временным файлом данных — `data/` не затрагивается.
+- Ответы API (`/api/cards`, `/api/cards/random`, `.../review`, `DELETE /api/cards/{id}`) подменяются в каждом тесте (`ui-tests/tests/fixtures.ts`); статику отдаёт собранный jar на порту 18080 (`QUIZ_UI_TEST_PORT`) с временным файлом данных — `data/` не затрагивается.
 - Вариант темы/вьюпорта выбирается тегом в названии теста: без тега — светлая тема 1280×800, `@dark` — тёмная, `@mobile` — 390×844.
 - При расхождении: `ui-tests/test-results/<тест>/` содержит `*-expected.png`, `*-actual.png`, `*-diff.png`.
 - Эталоны снимаются на macOS (суффикс `-darwin`); на Linux/CI нужны свои эталоны — пока не настроено.

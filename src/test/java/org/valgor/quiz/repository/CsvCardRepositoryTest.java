@@ -168,4 +168,35 @@ class CsvCardRepositoryTest {
                 .hasMessageContaining("review");
         assertThat(Files.readString(file, StandardCharsets.UTF_8)).isEqualTo(content);
     }
+
+    @Test
+    void deletesCardAndPersistsKeepingOrder() {
+        Path file = dir.resolve("cards.csv");
+        CsvCardRepository repository = new CsvCardRepository(file);
+        Card a = new Card("a", "Q1", "A1");
+        Card b = new Card("b", "Q2", "A2", true);
+        Card c = new Card("c", "Q3", "A3");
+        repository.save(a);
+        repository.save(b);
+        repository.save(c);
+
+        assertThat(repository.delete("b")).isTrue();
+
+        assertThat(repository.findAll()).containsExactly(a, c);
+        assertThat(repository.findById("b")).isEmpty();
+        assertThat(new CsvCardRepository(file).findAll()).containsExactly(a, c);
+    }
+
+    @Test
+    void deleteOfUnknownCardReturnsFalseAndKeepsFile() throws IOException {
+        Path file = dir.resolve("cards.csv");
+        CsvCardRepository repository = new CsvCardRepository(file);
+        repository.save(new Card("a", "Q1", "A1"));
+        String before = Files.readString(file, StandardCharsets.UTF_8);
+
+        assertThat(repository.delete("missing")).isFalse();
+
+        assertThat(Files.readString(file, StandardCharsets.UTF_8)).isEqualTo(before);
+        assertThat(repository.findAll()).hasSize(1);
+    }
 }

@@ -28,7 +28,7 @@ test.describe('Форма добавления карточки', () => {
 
     await page.goto('/cards.html');
 
-    const cards = page.getByRole('list').getByRole('button');
+    const cards = page.getByRole('list').getByRole('listitem');
     await expect(cards).toHaveCount(2);
     await expect(cards.last()).toContainText('Сколько будет 2+2?');
   });

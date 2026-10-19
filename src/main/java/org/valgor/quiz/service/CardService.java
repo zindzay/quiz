@@ -75,6 +75,12 @@ public class CardService {
         return "Количество должно быть целым числом от 1 до " + MAX_RANDOM_COUNT;
     }
 
+    public void delete(String id) {
+        if (!repository.delete(id)) {
+            throw new CardNotFoundException(id);
+        }
+    }
+
     /** Ставит (true) или снимает (false) карточку с повторения. */
     public Card setReview(String id, boolean review) {
         Card card = get(id).withReview(review);

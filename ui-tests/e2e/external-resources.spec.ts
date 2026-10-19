@@ -26,7 +26,7 @@ test('Нет запросов к сторонним доменам', async ({ ap
   await page.goto('/cards.html');
   await page.getByRole('list').getByRole('button', { name: /Столица Франции/ }).click();
   await expect(page.getByText('Париж', { exact: true })).toBeVisible();
-  await expect(page.getByRole('list').getByRole('button')).toHaveCount(2);
+  await expect(page.getByRole('list').getByRole('listitem')).toHaveCount(2);
 
   const appOrigin = new URL(app.baseURL).origin;
   expect(requested.length).toBeGreaterThan(0);

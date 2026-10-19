@@ -17,4 +17,7 @@ public interface CardRepository {
 
     /** Заменяет карточку с тем же id; если такой нет — IllegalArgumentException. */
     void update(Card card);
+
+    /** Удаляет карточку; false — карточки с таким id нет (файл не меняется). */
+    boolean delete(String id);
 }

@@ -126,6 +126,24 @@ public class CsvCardRepository implements CardRepository {
         }
     }
 
+    @Override
+    public boolean delete(String id) {
+        lock.writeLock().lock();
+        try {
+            int index = indexOf(id);
+            if (index < 0) {
+                return false;
+            }
+            List<Card> updated = new ArrayList<>(cards);
+            updated.remove(index);
+            write(updated);
+            cards.remove(index);
+            return true;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     private int indexOf(String id) {
         for (int i = 0; i < cards.size(); i++) {
             if (cards.get(i).id().equals(id)) {

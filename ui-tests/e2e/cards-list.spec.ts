@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './app-fixture';
 
-/** Карточки: у элементов списка роль button (они раскрывают ответ), поэтому ищем кнопки внутри списка. */
-const cards = (page: Page) => page.getByRole('list').getByRole('button');
+/** Карточки — элементы списка; внутри каждой кнопка раскрытия (с текстом вопроса) и кнопки удаления. */
+const cards = (page: Page) => page.getByRole('list').getByRole('listitem');
 
 // Сценарии страницы всех карточек (/cards.html) из openspec/specs/cards-web-ui/spec.md на настоящем приложении.
 
@@ -69,5 +69,93 @@ test.describe('Безопасный вывод текста', () => {
     await expect(card.getByText(markup, { exact: true })).toBeVisible();
     await expect(card.locator('b, script')).toHaveCount(0);
     expect(dialogShown).toBe(false);
+  });
+});
+
+test.describe('Удаление карточки в списке', () => {
+  const card = (page: Page, question: string) => cards(page).filter({ hasText: question });
+
+  test('Подтверждение удаления', async ({ app, page }) => {
+    await app.createCard('Вопрос 1', 'Ответ 1');
+    await page.goto('/cards.html');
+
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Удалить' }).click();
+
+    await expect(card(page, 'Вопрос 1').getByText('Удалить карточку?')).toBeVisible();
+    await expect(card(page, 'Вопрос 1').getByRole('button', { name: 'Да' })).toBeVisible();
+    await expect(card(page, 'Вопрос 1').getByRole('button', { name: 'Отмена' })).toBeFocused();
+    await expect(card(page, 'Вопрос 1').getByRole('button', { name: 'Удалить', exact: true })).toBeHidden();
+    await expect(cards(page)).toHaveCount(1);
+    expect((await app.listCards()).map((c) => c.question)).toEqual(['Вопрос 1']);
+  });
+
+  test('Удаление после подтверждения', async ({ app, page }) => {
+    await app.createCard('Вопрос 1', 'Ответ 1');
+    await app.createCard('Вопрос 2', 'Ответ 2');
+    await app.createCard('Вопрос 3', 'Ответ 3');
+    await page.goto('/cards.html');
+
+    await card(page, 'Вопрос 2').getByRole('button', { name: 'Удалить' }).click();
+    await card(page, 'Вопрос 2').getByRole('button', { name: 'Да' }).click();
+
+    await expect(cards(page)).toHaveText([/Вопрос 1/, /Вопрос 3/]);
+    expect((await app.listCards()).map((c) => c.question)).toEqual(['Вопрос 1', 'Вопрос 3']);
+
+    await page.reload();
+    await expect(cards(page)).toHaveText([/Вопрос 1/, /Вопрос 3/]);
+  });
+
+  test('Отмена удаления', async ({ app, page }) => {
+    await app.createCard('Вопрос 1', 'Ответ 1');
+    await page.goto('/cards.html');
+
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Удалить' }).click();
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Отмена' }).click();
+
+    await expect(page.getByText('Удалить карточку?')).toBeHidden();
+    await expect(card(page, 'Вопрос 1').getByRole('button', { name: 'Удалить' })).toBeFocused();
+    await expect(cards(page)).toHaveCount(1);
+    expect((await app.listCards()).map((c) => c.question)).toEqual(['Вопрос 1']);
+  });
+
+  test('Удалена последняя карточка', async ({ app, page }) => {
+    await app.createCard('Вопрос 1', 'Ответ 1');
+    await page.goto('/cards.html');
+
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Удалить' }).click();
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Да' }).click();
+
+    await expect(page.getByText('Карточек пока нет')).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: 'Добавить карточку' })).toBeVisible();
+    await expect(cards(page)).toHaveCount(0);
+  });
+
+  test('Кнопка удаления не раскрывает ответ', async ({ app, page }) => {
+    await app.createCard('Вопрос 1', 'Ответ 1');
+    await page.goto('/cards.html');
+
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Удалить' }).click();
+    await expect(page.getByText('Ответ 1')).toBeHidden();
+    await card(page, 'Вопрос 1').getByRole('button', { name: 'Отмена' }).click();
+
+    await expect(page.getByText('Ответ 1')).toBeHidden();
+    await expect(page.getByRole('button', { name: /Вопрос 1/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+test.describe('Ошибка удаления карточки', () => {
+  test('Сервер недоступен при удалении', async ({ app, page }) => {
+    await app.createCard('Вопрос 1', 'Ответ 1');
+    await page.goto('/cards.html');
+    const item = cards(page).filter({ hasText: 'Вопрос 1' });
+    await item.getByRole('button', { name: 'Удалить' }).click();
+
+    await app.stop();
+    await item.getByRole('button', { name: 'Да' }).click();
+
+    await expect(item.getByRole('alert')).toHaveText(/Не удалось удалить карточку/);
+    await expect(cards(page)).toHaveCount(1);
+    await expect(item.getByRole('button', { name: 'Удалить' })).toBeEnabled();
+    await expect(page.getByText('Удалить карточку?')).toBeHidden();
   });
 });

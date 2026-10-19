@@ -89,6 +89,17 @@ class CardServiceTest {
     }
 
     @Test
+    void deletesCard() {
+        Card a = service.create("A?", "a");
+        Card b = service.create("B?", "b");
+
+        service.delete(a.id());
+
+        assertThat(service.list()).containsExactly(b);
+        assertThatThrownBy(() -> service.delete(a.id())).isInstanceOf(CardNotFoundException.class);
+    }
+
+    @Test
     void newCardIsNotOnReview() {
         assertThat(service.create("Q?", "A").review()).isFalse();
     }
@@ -206,6 +217,11 @@ class CardServiceTest {
         @Override
         public void update(Card card) {
             cards.replaceAll(existing -> existing.id().equals(card.id()) ? card : existing);
+        }
+
+        @Override
+        public boolean delete(String id) {
+            return cards.removeIf(card -> card.id().equals(id));
         }
     }
 }
