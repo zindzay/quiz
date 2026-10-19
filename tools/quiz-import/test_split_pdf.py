@@ -1,12 +1,14 @@
 """Тесты split_pdf.swift: запуск скрипта на PDF-фикстурах из fixtures/.
 
-Запуск: python3 -m unittest discover tools/quiz-import (нужен swift — macOS с Command Line Tools).
+Запуск: python3 -m unittest discover tools/quiz-import (нужен swift — macOS с Command Line Tools;
+на других ОС тесты пропускаются: у swift там нет PDFKit).
 """
 
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -20,7 +22,7 @@ def fixture(name):
     return os.path.join(FIXTURES, name)
 
 
-@unittest.skipUnless(shutil.which("swift"), "нужен swift (macOS Command Line Tools)")
+@unittest.skipUnless(sys.platform == "darwin" and shutil.which("swift"), "нужен macOS со swift (PDFKit)")
 class SplitPdfTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

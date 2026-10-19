@@ -168,10 +168,26 @@ cd ui-tests && npx playwright show-report   # HTML-отчёт последнег
 - Ответы API (`/api/cards`, `/api/cards/random`, `.../review`, `DELETE /api/cards/{id}`) подменяются в каждом тесте (`ui-tests/tests/fixtures.ts`); статику отдаёт собранный jar на порту 18080 (`QUIZ_UI_TEST_PORT`) с временным файлом данных — `data/` не затрагивается.
 - Вариант темы/вьюпорта выбирается тегом в названии теста: без тега — светлая тема 1280×800, `@dark` — тёмная, `@mobile` — 390×844.
 - При расхождении: `ui-tests/test-results/<тест>/` содержит `*-expected.png`, `*-actual.png`, `*-diff.png`.
-- Эталоны снимаются на macOS (суффикс `-darwin`); на Linux/CI нужны свои эталоны — пока не настроено.
+- Эталоны снимаются на macOS (суффикс `-darwin`); Linux-эталонов нет, поэтому в CI скриншотные тесты не запускаются — см. раздел «CI (GitHub Actions)».
 - Первый запуск скачивает Node 24 (в `.gradle/nodejs`) и Chromium (в `~/Library/Caches/ms-playwright`).
 - Новое состояние интерфейса (новый экран, элемент, ошибка) — добавить скриншотный тест в том же изменении.
 
 **Правило обновления эталонов.** Расхождение скриншотов по умолчанию считается регрессией: исправлять код, а не эталоны. `screenshotUpdate` запускается только если изменение внешнего вида — цель задачи, и только после того, как пользователь посмотрел список изменившихся скриншотов с путями к `*-diff.png` и подтвердил.
 
 **Хук Claude Code.** `.claude/settings.json` запускает `.claude/hooks/ui-check.sh` после каждого `Edit`/`Write` в `src/main/resources/static/`: он прогоняет `screenshotTest` и `e2eTest`. При падении хук возвращает список упавших тестов (код 2): скриншоты — по правилу выше, e2e — исправлять код. Правки вне `static/` хук пропускает сразу; правки Java-кода проверяет `./gradlew build`.
+
+## CI (GitHub Actions)
+
+Workflow `.github/workflows/ci.yml` (`CI`, job `build`) запускается при пуше в `master` (в том числе при мерже PR) и на пулл-реквесты в `master` — при создании и на каждый новый коммит; новый коммит в PR отменяет устаревший прогон.
+
+```bash
+./gradlew build -x screenshotTest                 # компиляция, JUnit и e2e-тесты
+python3 -m unittest discover tools/quiz-import    # тесты скриптов импорта
+```
+
+- Раннер `ubuntu-latest`, Temurin 27, кеш Gradle (`gradle/actions/setup-gradle`). Чтобы воспроизвести прогон локально — те же две команды.
+- Скриншотные тесты в CI **не** запускаются (эталоны только `-darwin`): регрессии внешнего вида ловят локальный `./gradlew build` на macOS и хук Claude Code.
+- В CI (`CI=true`) `playwrightInstall` ставит Chromium с системными библиотеками (`--with-deps`). Тесты `split_pdf.swift` на Linux пропускаются: нужен macOS со swift (PDFKit).
+- Забытый `test.only` в Playwright роняет CI (`forbidOnly`).
+- При падении отчёты JUnit и Playwright e2e с трейсами — в артефакте `test-reports` прогона (7 дней).
+- Сам по себе красный CI мерж не блокирует: для этого в настройках GitHub включить Branch protection для `master` с обязательной проверкой `CI / build`.
