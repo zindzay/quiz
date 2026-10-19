@@ -5,7 +5,8 @@
     coverage.py report COVERAGE CARDS   — «ключевых положений: X, покрыто: Y» и разбивка по разделам
 
 COVERAGE — coverage.json (формат — tools/quiz-import/card-rules.md, «Полный охват»),
-CARDS — JSON-массив карточек [{"question", "answer"}].
+CARDS — JSON-массив карточек [{"question", "answer"}]. Положение с existing (вопрос карточки,
+уже существующей в приложении) вместо card покрыто без новой карточки.
 Только стандартная библиотека Python 3.
 """
 
@@ -62,6 +63,12 @@ def load(coverage_path, cards_path):
             if not isinstance(point.get("text"), str) or not point["text"].strip():
                 raise FormatError(f"{pwhere} ({point['id']}): нужен непустой text")
             card = point.get("card")
+            existing = point.get("existing")
+            if existing is not None:
+                if not isinstance(existing, str) or not existing.strip():
+                    raise FormatError(f"{pwhere} ({point['id']}): existing должен быть непустой строкой")
+                if card is not None:
+                    raise FormatError(f"{pwhere} ({point['id']}): нужен card или existing, а не оба")
             if card is not None:
                 if isinstance(card, bool) or not isinstance(card, int):
                     raise FormatError(f"{pwhere} ({point['id']}): card должен быть целым индексом или null")
@@ -81,12 +88,12 @@ def gaps(sections, card_count):
             continue
         section_cards = set()
         for point in section["points"]:
-            if point.get("card") is None:
-                uncovered.append({"id": point["id"], "section": section["id"], "text": point["text"]})
-            else:
+            if point.get("card") is not None:
                 section_cards.add(point["card"])
+            elif point.get("existing") is None:
+                uncovered.append({"id": point["id"], "section": section["id"], "text": point["text"]})
         linked |= section_cards
-        if not section_cards:
+        if not section_cards and not all(p.get("existing") is not None for p in section["points"]):
             empty_sections.append(section["id"])
     unlinked = [i for i in range(card_count) if i not in linked]
     return {
@@ -109,17 +116,23 @@ def command_check(sections, card_count):
 
 def command_report(sections, card_count):
     total = sum(len(s["points"]) for s in sections)
-    covered = sum(1 for s in sections for p in s["points"] if p.get("card") is not None)
+    existing = sum(1 for s in sections for p in s["points"] if p.get("existing") is not None)
+    covered = existing + sum(1 for s in sections for p in s["points"] if p.get("card") is not None)
     print(f"ключевых положений: {total}, покрыто: {covered}")
+    if existing:
+        print(f"из них существующими карточками: {existing}")
     print(f"карточек: {card_count}")
     print()
-    print("раздел | положений | карточек")
+    print("раздел | положений | карточек" + (" | уже были" if existing else ""))
     for section in sections:
         if not section["points"] and section.get("skipped_reason"):
             print(f"{section['title']} | — | пропущен: {section['skipped_reason']}")
             continue
         cards = {p["card"] for p in section["points"] if p.get("card") is not None}
-        print(f"{section['title']} | {len(section['points'])} | {len(cards)}")
+        line = f"{section['title']} | {len(section['points'])} | {len(cards)}"
+        if existing:
+            line += f" | {sum(1 for p in section['points'] if p.get('existing') is not None)}"
+        print(line)
     return EXIT_OK
 
 

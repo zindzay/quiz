@@ -122,5 +122,46 @@ class CoverageTest(unittest.TestCase):
         self.assertIn("Примечания | — | пропущен: справочный раздел", lines)
 
 
+    def existing_point(self, pid):
+        return {"id": pid, "text": f"Положение {pid}", "card": None, "existing": f"Вопрос из приложения {pid}?"}
+
+    def test_existing_point_is_covered(self):
+        sections, cards = self.full()
+        sections[0]["points"].append(self.existing_point("s1-p3"))
+        code, out, _ = self.run_cli("check", sections, cards)
+        self.assertEqual(0, code, out)
+
+    def test_section_only_with_existing_is_not_empty(self):
+        sections, cards = self.full()
+        sections.append({"id": "s4", "title": "Повтор", "points": [self.existing_point("s4-p1")]})
+        code, out, _ = self.run_cli("check", sections, cards)
+        self.assertEqual(0, code, out)
+
+    def test_card_and_existing_together_is_format_error(self):
+        sections, cards = self.full()
+        sections[0]["points"][0]["existing"] = "Вопрос из приложения?"
+        code, _, err = self.run_cli("check", sections, cards)
+        self.assertEqual(1, code)
+        self.assertIn("не оба", err)
+        sections[0]["points"][0] = {"id": "s1-p1", "text": "т", "card": None, "existing": " "}
+        code, _, err = self.run_cli("check", sections, cards)
+        self.assertEqual(1, code)
+        self.assertIn("existing", err)
+
+    def test_report_with_points_already_in_app(self):
+        points = [point(f"s1-p{i}", i) for i in range(8)] + [self.existing_point(f"s1-p{i}") for i in range(8, 12)]
+        sections = [{"id": "s1", "title": "Введение", "points": points}]
+        cards = [card(i) for i in range(8)]
+        self.assertEqual(0, self.run_cli("check", sections, cards)[0])
+        code, out, _ = self.run_cli("report", sections, cards)
+        self.assertEqual(0, code)
+        lines = out.splitlines()
+        self.assertEqual("ключевых положений: 12, покрыто: 12", lines[0])
+        self.assertEqual("из них существующими карточками: 4", lines[1])
+        self.assertIn("карточек: 8", lines)
+        self.assertIn("раздел | положений | карточек | уже были", lines)
+        self.assertIn("Введение | 12 | 8 | 4", lines)
+
+
 if __name__ == "__main__":
     unittest.main()

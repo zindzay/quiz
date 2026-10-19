@@ -3,6 +3,8 @@
 
     post_cards.py check [--api URL]       — доступно ли API; код 0 или 2
     post_cards.py post FILE [--api URL]   — отправить карточки из JSON, напечатать JSON-отчёт
+    post_cards.py similar FILE [--api URL] — кандидаты в смысловые дубликаты (из приложения и набора)
+    post_cards.py lint FILE               — явные признаки карточек без пользы; код 0 или 3
 
 Базовый адрес: --api > переменная окружения QUIZ_API_URL > http://localhost:8080.
 Только стандартная библиотека Python 3.
@@ -11,6 +13,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -22,6 +25,23 @@ TIMEOUT_SECONDS = 10
 EXIT_OK = 0
 EXIT_INPUT_ERROR = 1
 EXIT_API_UNAVAILABLE = 2
+EXIT_LINT_FOUND = 3
+
+SIMILAR_THRESHOLD = 0.35
+MAX_CANDIDATES = 3
+STEM_LENGTH = 5
+STOP_WORDS = {
+    "и", "в", "во", "на", "с", "со", "к", "ко", "по", "о", "об", "от", "до", "из", "за", "для", "при", "у",
+    "не", "ни", "а", "но", "или", "ли", "же", "бы", "то", "как", "так", "что", "чем", "это", "этот", "эта",
+    "эти", "его", "ее", "их", "он", "она", "оно", "они", "какой", "какая", "какое", "какие", "каким", "какую",
+    "какого", "каких", "где", "когда", "почему", "зачем", "сколько", "ли", "есть", "быть", "если",
+    "a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "is", "are", "what", "which", "how",
+    "why", "does", "do", "it", "with", "by", "be",
+}
+YES_NO_ANSWERS = {"да", "нет", "yes", "no"}
+SOURCE_REFERENCE = re.compile(
+    r"в\s+этом\s+уроке|в\s+уроке|в\s+статье|в\s+тексте|в\s+курсе|в\s+этой\s+главе|\bавтор|"
+    r"this\s+article|this\s+lesson", re.I)
 
 
 class ApiUnavailable(Exception):
@@ -34,6 +54,77 @@ def base_url(cli_value):
 
 def normalize(question):
     return question.strip().casefold()
+
+
+def stems(text):
+    """Множество основ слов: без регистра и служебных слов, кириллица усечена до STEM_LENGTH букв."""
+    result = set()
+    for word in re.findall(r"\w+", text.casefold().replace("ё", "е")):
+        if word in STOP_WORDS or (len(word) == 1 and not word.isdigit()):
+            continue
+        if re.search(r"[а-я]", word) and len(word) > STEM_LENGTH:
+            word = word[:STEM_LENGTH]
+        result.add(word)
+    return result
+
+
+def card_stems(card):
+    return stems(f"{card.get('question', '')} {card.get('answer', '')}")
+
+
+def similarity(a, b):
+    if not a or not b:
+        return 0.0
+    return len(a & b) / min(len(a), len(b))
+
+
+def similar(existing, cards):
+    """Для каждой карточки набора — до MAX_CANDIDATES похожих из приложения и из предыдущих карточек набора."""
+    app = [(card, card_stems(card)) for card in existing if isinstance(card, dict)]
+    result = []
+    seen = []
+    for index, card in enumerate(cards):
+        if not isinstance(card, dict):
+            continue
+        own = card_stems(card)
+        found = []
+        for other, other_stems in app:
+            score = similarity(own, other_stems)
+            if score >= SIMILAR_THRESHOLD:
+                found.append({"source": "app", "question": other.get("question", ""),
+                              "answer": other.get("answer", ""), "score": round(score, 2)})
+        for other_index, other, other_stems in seen:
+            score = similarity(own, other_stems)
+            if score >= SIMILAR_THRESHOLD:
+                found.append({"source": "set", "index": other_index, "question": other.get("question", ""),
+                              "answer": other.get("answer", ""), "score": round(score, 2)})
+        seen.append((index, card, own))
+        if found:
+            found.sort(key=lambda c: -c["score"])
+            result.append({"index": index, "question": card.get("question", ""),
+                           "candidates": found[:MAX_CANDIDATES]})
+    return result
+
+
+def lint(cards):
+    """Явные признаки карточек без пользы: [{"index", "question", "reason"}]."""
+    found = []
+    for index, card in enumerate(cards):
+        if not isinstance(card, dict):
+            continue
+        question, answer = str(card.get("question", "")), str(card.get("answer", ""))
+        reason = None
+        if answer.strip().strip(".!").casefold() in YES_NO_ANSWERS:
+            reason = "yes_no"
+        elif SOURCE_REFERENCE.search(question):
+            reason = "source_reference"
+        else:
+            answer_stems = stems(answer)
+            if answer_stems and answer_stems <= stems(question):
+                reason = "answer_in_question"
+        if reason:
+            found.append({"index": index, "question": question, "reason": reason})
+    return found
 
 
 def request_json(method, url, body=None):
@@ -59,11 +150,15 @@ def unavailable_message(api, reason):
             f"или укажите адрес через --api / QUIZ_API_URL.")
 
 
-def fetch_existing_questions(api):
+def fetch_existing_cards(api):
     status, cards = request_json("GET", f"{api}/api/cards")
     if status != 200 or not isinstance(cards, list):
         raise ApiUnavailable(f"GET /api/cards вернул {status}")
-    return {normalize(card.get("question", "")) for card in cards}
+    return cards
+
+
+def fetch_existing_questions(api):
+    return {normalize(card.get("question", "")) for card in fetch_existing_cards(api)}
 
 
 def check(api):
@@ -134,18 +229,31 @@ def main(argv=None):
     post_parser = sub.add_parser("post", help="отправить карточки из JSON-файла")
     post_parser.add_argument("file")
     post_parser.add_argument("--api")
+    similar_parser = sub.add_parser("similar", help="кандидаты в смысловые дубликаты")
+    similar_parser.add_argument("file")
+    similar_parser.add_argument("--api")
+    lint_parser = sub.add_parser("lint", help="явные признаки карточек без пользы")
+    lint_parser.add_argument("file")
     args = parser.parse_args(argv)
 
-    api = base_url(args.api)
     if args.command == "check":
-        return check(api)
+        return check(base_url(args.api))
 
     try:
         cards = load_cards(args.file)
     except (OSError, ValueError) as e:
         print(f"Не удалось прочитать {args.file}: {e}", file=sys.stderr)
         return EXIT_INPUT_ERROR
+    if args.command == "lint":
+        found = lint(cards)
+        print(json.dumps(found, ensure_ascii=False, indent=2))
+        return EXIT_LINT_FOUND if found else EXIT_OK
+
+    api = base_url(args.api)
     try:
+        if args.command == "similar":
+            print(json.dumps(similar(fetch_existing_cards(api), cards), ensure_ascii=False, indent=2))
+            return EXIT_OK
         report = post(api, cards)
     except ApiUnavailable as e:
         print(unavailable_message(api, e), file=sys.stderr)

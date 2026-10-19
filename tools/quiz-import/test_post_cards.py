@@ -180,5 +180,106 @@ class PostTest(unittest.TestCase):
         self.assertEqual(code, 1)
 
 
+EMPTY_VAR = {"question": "Почему у пустого списка, объявленного через var, тип указывают явно, например new ArrayList<String>()?",
+             "answer": "Иначе создаётся ArrayList<Object>, и вернуть его из метода с типом List<String> не получится: "
+                       "компилятор сообщит incompatible types."}
+INCOMPATIBLE = {"question": "Какую ошибку сообщит компилятор, если вернуть var items = new ArrayList<>(); "
+                            "из метода с типом List<String>?", "answer": "incompatible types."}
+SET = {"question": "Что делает метод set() у ArrayList?", "answer": "Заменяет элемент списка по указанному индексу на новый."}
+REMOVE = {"question": "Что делает метод remove() у ArrayList?", "answer": "Удаляет элемент списка по указанному индексу."}
+INDEX_RULE = {"question": "С какого числа начинается индексация элементов ArrayList?", "answer": "С нуля, как и в массивах."}
+INDEX_EXAMPLE = {"question": "Какой индекс получит первый элемент, добавленный в ArrayList через add()?", "answer": "Индекс 0."}
+HTTPS = {"question": "Какой порт по умолчанию использует HTTPS?", "answer": "443."}
+
+
+class SimilarTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def similar(self, existing, cards):
+        api = FakeApi(cards=[dict(card, id=str(i)) for i, card in enumerate(existing)])
+        self.addCleanup(api.close)
+        path = os.path.join(self.tmp.name, "cards.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(cards, f, ensure_ascii=False)
+        code, out, err = run(["similar", path, "--api", api.url])
+        self.assertEqual(0, code, err)
+        self.assertEqual([], api.posted)
+        return json.loads(out)
+
+    def test_paraphrased_question_has_app_candidate(self):
+        result = self.similar([EMPTY_VAR, HTTPS], [INCOMPATIBLE])
+        self.assertEqual(1, len(result))
+        self.assertEqual(0, result[0]["index"])
+        candidate = result[0]["candidates"][0]
+        self.assertEqual("app", candidate["source"])
+        self.assertEqual(EMPTY_VAR["question"], candidate["question"])
+        self.assertEqual(EMPTY_VAR["answer"], candidate["answer"])
+        self.assertGreaterEqual(candidate["score"], post_cards.SIMILAR_THRESHOLD)
+        self.assertNotIn(HTTPS["question"], [c["question"] for c in result[0]["candidates"]])
+
+    def test_same_topic_other_fact_is_candidate_for_model(self):
+        result = self.similar([SET], [REMOVE])
+        self.assertEqual([SET["question"]], [c["question"] for c in result[0]["candidates"]])
+
+    def test_rule_and_example_in_same_set(self):
+        result = self.similar([], [INDEX_RULE, INDEX_EXAMPLE])
+        self.assertEqual(1, len(result))
+        self.assertEqual(1, result[0]["index"])
+        self.assertEqual([{"source": "set", "index": 0, "question": INDEX_RULE["question"]}],
+                         [{k: c[k] for k in ("source", "index", "question")} for c in result[0]["candidates"]])
+
+    def test_unrelated_card_not_in_output(self):
+        self.assertEqual([], self.similar([SET, EMPTY_VAR], [HTTPS]))
+
+    def test_at_most_three_candidates_best_first(self):
+        existing = [{"question": f"Что делает метод set() у ArrayList, вариант {i}?", "answer": SET["answer"]}
+                    for i in range(5)] + [REMOVE]
+        candidates = self.similar(existing, [SET])[0]["candidates"]
+        self.assertEqual(post_cards.MAX_CANDIDATES, len(candidates))
+        scores = [c["score"] for c in candidates]
+        self.assertEqual(sorted(scores, reverse=True), scores)
+
+    def test_unavailable_api_returns_code_2(self):
+        path = os.path.join(self.tmp.name, "cards.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump([SET], f, ensure_ascii=False)
+        code, _, err = run(["similar", path, "--api", unused_url()])
+        self.assertEqual(2, code)
+        self.assertIn("./gradlew bootRun", err)
+
+
+class LintTest(unittest.TestCase):
+    def lint(self, cards):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "cards.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(cards, f, ensure_ascii=False)
+            code, out, _ = run(["lint", path])
+        return code, json.loads(out)
+
+    def test_answer_repeats_question(self):
+        code, found = self.lint([{"question": "Что делает метод set(), заменяющий элемент?", "answer": "Заменяет элемент"}])
+        self.assertEqual(3, code)
+        self.assertEqual([{"index": 0, "question": "Что делает метод set(), заменяющий элемент?",
+                           "reason": "answer_in_question"}], found)
+
+    def test_yes_no_answers(self):
+        code, found = self.lint([{"question": "Можно ли изменить List.of()?", "answer": "да"},
+                                 {"question": "Компилируется ли ArrayList<int>?", "answer": "Нет."}])
+        self.assertEqual(3, code)
+        self.assertEqual(["yes_no", "yes_no"], [f["reason"] for f in found])
+
+    def test_question_about_lesson(self):
+        code, found = self.lint([{"question": "Какую библиотеку будут использовать в этом уроке и последующих курсах?",
+                                  "answer": "commons-collections4."}])
+        self.assertEqual(3, code)
+        self.assertEqual("source_reference", found[0]["reason"])
+
+    def test_clean_set(self):
+        self.assertEqual((0, []), self.lint([SET, REMOVE, INDEX_RULE, HTTPS, INCOMPATIBLE]))
+
+
 if __name__ == "__main__":
     unittest.main()
