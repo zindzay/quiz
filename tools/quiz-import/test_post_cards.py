@@ -280,6 +280,43 @@ class LintTest(unittest.TestCase):
     def test_clean_set(self):
         self.assertEqual((0, []), self.lint([SET, REMOVE, INDEX_RULE, HTTPS, INCOMPATIBLE]))
 
+    def assertCompound(self, questions):
+        code, found = self.lint([{"question": q, "answer": "Ответ про обход коллекций."} for q in questions])
+        self.assertEqual(3, code)
+        self.assertEqual([(i, "compound_question") for i in range(len(questions))],
+                         [(f["index"], f["reason"]) for f in found])
+
+    def test_conjunction_with_second_question_word(self):
+        self.assertCompound(["Что такое итератор и зачем он нужен?",
+                             "Что возвращает iterator() и в чём его преимущество перед for?",
+                             "Как создать итератор, а также что вернёт next() в конце?"])
+
+    def test_two_question_marks(self):
+        self.assertCompound(["Какой список создаёт `List.of()`? Как сделать его изменяемым?"])
+
+    def test_english_compound_question(self):
+        self.assertCompound(["What is an iterator and why is it needed?"])
+
+    def test_contrast_choice_comparison_and_enumeration_not_compound(self):
+        questions = ["Когда обходить список циклом `for`, а когда `for-each`?",
+                     "Чем `WHERE` отличается от `HAVING`?",
+                     "Что выбрать для обхода списка — `for` или `for-each`?",
+                     "Какие классы-обёртки используют вместо `int` и `char`?",
+                     "Что вернёт выражение `x > 0 ? x : -x` при x = -3?",
+                     "Кто и когда предложил реляционную модель данных?"]
+        self.assertEqual((0, []), self.lint([{"question": q, "answer": "Ответ про обход коллекций."}
+                                             for q in questions]))
+
+    def test_real_sets_have_no_false_findings(self):
+        """Наборы ручных прогонов: находки — только настоящие составные вопросы из наборов до one-thought-per-card."""
+        path = os.path.join(os.path.dirname(__file__), "fixtures", "real-cards.json")
+        with open(path, encoding="utf-8") as f:
+            sets = json.load(f)
+        found = {name: [(f["index"], f["reason"]) for f in post_cards.lint(cards)] for name, cards in sets.items()}
+        self.assertEqual({"arraylist": [], "list-traversal": [],
+                          "http": [(5, "compound_question"), (17, "compound_question")],
+                          "databases": [(32, "compound_question")]}, found)
+
 
 if __name__ == "__main__":
     unittest.main()

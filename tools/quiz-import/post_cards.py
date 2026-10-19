@@ -42,6 +42,12 @@ YES_NO_ANSWERS = {"да", "нет", "yes", "no"}
 SOURCE_REFERENCE = re.compile(
     r"в\s+этом\s+уроке|в\s+уроке|в\s+статье|в\s+тексте|в\s+курсе|в\s+этой\s+главе|\bавтор|"
     r"this\s+article|this\s+lesson", re.I)
+INLINE_CODE = re.compile(r"`[^`]*`")
+QUESTION_WORD = (r"(?:как\w*|что|чем|зачем|почему|какой|какая|какое|какие|каким|какую|каких|каков\w*|когда|где|куда|"
+                 r"откуда|сколько|кто|кого|чего|чём|what|why|how|when|where|which|who)")
+COMPOUND_CONJUNCTION = re.compile(
+    r"(?:\s|,)(?:и|а\s+также|and)\s+(?:в\s+|для\s+|на\s+|с\s+)?" + QUESTION_WORD + r"\b", re.I)
+PAIRED_QUESTION_WORDS = re.compile(r"\b" + QUESTION_WORD + r"\s*$", re.I)
 
 
 class ApiUnavailable(Exception):
@@ -106,6 +112,16 @@ def similar(existing, cards):
     return result
 
 
+def is_compound(question):
+    """Два вопроса в одном: несколько «?» вне `кода` или союз с новым вопросительным словом."""
+    text = INLINE_CODE.sub("", question)
+    if text.count("?") > 1:
+        return True
+    # «Кто и когда …?» — одна мысль: союз соединяет два вопросительных слова подряд
+    return any(not PAIRED_QUESTION_WORDS.search(text[:match.start()])
+               for match in COMPOUND_CONJUNCTION.finditer(text))
+
+
 def lint(cards):
     """Явные признаки карточек без пользы: [{"index", "question", "reason"}]."""
     found = []
@@ -118,6 +134,8 @@ def lint(cards):
             reason = "yes_no"
         elif SOURCE_REFERENCE.search(question):
             reason = "source_reference"
+        elif is_compound(question):
+            reason = "compound_question"
         else:
             answer_stems = stems(answer)
             if answer_stems and answer_stems <= stems(question):
